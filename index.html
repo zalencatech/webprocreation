@@ -1,0 +1,3400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WebProCreation — Agency Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<!-- Supabase JS SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3d;
+    --accent: #6c63ff;
+    --accent2: #ff6584;
+    --accent3: #43e97b;
+    --text: #e8e8f0;
+    --text-dim: #8888aa;
+    --admin-color: #6c63ff;
+    --staff-color: #43e97b;
+    --client-color: #ff9f43;
+    --danger: #ff4757;
+    --warning: #ffa502;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ===== LOADING SCREEN ===== */
+  #loading-screen {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .loading-logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .loading-spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  .loading-text { color: var(--text-dim); font-size: 13px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ===== SUPABASE SETUP MODAL ===== */
+  #supabaseSetupModal {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .setup-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 48px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  /* ===== LOGIN SCREEN ===== */
+  #login-screen {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg);
+    z-index: 1000;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .login-bg {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 20% 50%, rgba(108,99,255,0.15) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 50%, rgba(255,101,132,0.1) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .login-box {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 48px;
+    width: 420px;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.5);
+  }
+
+  .login-logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+
+  .login-tagline {
+    color: var(--text-dim);
+    font-size: 13px;
+    margin-bottom: 36px;
+  }
+
+  .login-roles {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+
+  .role-btn {
+    padding: 14px 8px;
+    border-radius: 12px;
+    border: 2px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .role-btn:hover { border-color: var(--accent); color: var(--text); }
+  .role-btn.active[data-role="admin"] { border-color: var(--admin-color); color: var(--admin-color); background: rgba(108,99,255,0.1); }
+  .role-btn.active[data-role="staff"] { border-color: var(--staff-color); color: var(--staff-color); background: rgba(67,233,123,0.1); }
+  .role-btn.active[data-role="client"] { border-color: var(--client-color); color: var(--client-color); background: rgba(255,159,67,0.1); }
+
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
+  .form-group textarea { resize: vertical; min-height: 90px; }
+  .form-group select option { background: #1a1a26; }
+
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #9b59b6);
+    color: white;
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(108,99,255,0.4); }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  .btn-success { background: var(--accent3); color: #0a0a0f; }
+  .btn-success:hover { opacity: 0.9; }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-warning { background: var(--warning); color: #0a0a0f; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-sm { padding: 8px 14px; font-size: 12px; border-radius: 8px; width: auto; }
+  .btn-xs { padding: 5px 10px; font-size: 11px; border-radius: 6px; width: auto; }
+
+  /* ===== MAIN APP ===== */
+  #app { display: none; height: 100vh; overflow: hidden; }
+
+  .app-layout { display: flex; height: 100vh; }
+
+  /* ===== SIDEBAR ===== */
+  .sidebar {
+    width: 240px;
+    min-width: 240px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 24px 0;
+    overflow-y: auto;
+  }
+
+  .sidebar-logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .user-badge {
+    margin: 0 16px 20px;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .user-badge.admin { background: rgba(108,99,255,0.15); color: var(--admin-color); border: 1px solid rgba(108,99,255,0.3); }
+  .user-badge.staff { background: rgba(67,233,123,0.15); color: var(--staff-color); border: 1px solid rgba(67,233,123,0.3); }
+  .user-badge.client { background: rgba(255,159,67,0.15); color: var(--client-color); border: 1px solid rgba(255,159,67,0.3); }
+
+  .nav-section { padding: 8px 16px; }
+  .nav-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 6px; padding: 0 4px; }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--text-dim);
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 2px;
+    position: relative;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: rgba(108,99,255,0.15); color: var(--accent); }
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+
+  .badge {
+    margin-left: auto;
+    background: var(--danger);
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 20px;
+    font-weight: 700;
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ===== MAIN CONTENT ===== */
+  .main-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px;
+    background: var(--bg);
+  }
+
+  .page-header {
+    margin-bottom: 32px;
+  }
+
+  .page-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+
+  .page-subtitle { color: var(--text-dim); font-size: 14px; }
+
+  /* ===== CARDS ===== */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    transition: border-color 0.2s;
+  }
+  .stat-card:hover { border-color: var(--accent); }
+
+  .stat-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-label { color: var(--text-dim); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-card.purple .stat-num { color: var(--accent); }
+  .stat-card.green .stat-num { color: var(--accent3); }
+  .stat-card.orange .stat-num { color: var(--client-color); }
+  .stat-card.red .stat-num { color: var(--danger); }
+
+  /* ===== PROJECTS TABLE ===== */
+  .projects-table { width: 100%; border-collapse: collapse; }
+  .projects-table th {
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+  }
+  .projects-table td {
+    padding: 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 14px;
+    vertical-align: middle;
+  }
+  .projects-table tr:last-child td { border-bottom: none; }
+  .projects-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .status-pill {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-block;
+  }
+  .status-pill.new { background: rgba(108,99,255,0.2); color: var(--accent); }
+  .status-pill.assigned { background: rgba(255,159,67,0.2); color: var(--client-color); }
+  .status-pill.in-progress { background: rgba(67,233,123,0.2); color: var(--accent3); }
+  .status-pill.submitted { background: rgba(255,165,2,0.2); color: var(--warning); }
+  .status-pill.delivered { background: rgba(67,233,123,0.15); color: var(--accent3); }
+  .status-pill.pending { background: rgba(255,71,87,0.2); color: var(--danger); }
+  .status-pill.revision { background: rgba(255,101,132,0.2); color: var(--accent2); }
+
+  .type-icon { font-size: 20px; }
+
+  /* ===== MODAL ===== */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 500;
+    padding: 20px;
+  }
+  .modal-overlay.active { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 36px;
+    width: 100%;
+    max-width: 540px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+  }
+
+  .modal-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+  .modal-subtitle { color: var(--text-dim); font-size: 13px; margin-bottom: 28px; }
+
+  .modal-close {
+    position: absolute;
+    top: 20px; right: 20px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  .modal-close:hover { color: var(--text); border-color: var(--accent); }
+
+  .type-selector {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .type-option {
+    padding: 16px 10px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+    background: transparent;
+    color: var(--text-dim);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .type-option .type-emoji { font-size: 24px; display: block; margin-bottom: 6px; }
+  .type-option:hover { border-color: var(--accent); color: var(--text); }
+  .type-option.selected { border-color: var(--accent); background: rgba(108,99,255,0.15); color: var(--text); }
+
+  /* ===== NOTIFICATIONS ===== */
+  .notif-list { display: flex; flex-direction: column; gap: 12px; }
+  .notif-item {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 16px;
+    background: var(--surface2);
+    border-radius: 12px;
+    border-left: 3px solid transparent;
+  }
+  .notif-item.new { border-left-color: var(--accent); }
+  .notif-item.urgent { border-left-color: var(--danger); }
+  .notif-item.success { border-left-color: var(--accent3); }
+  .notif-item.info { border-left-color: var(--warning); }
+  .notif-icon { font-size: 20px; flex-shrink: 0; }
+  .notif-text { font-size: 13px; line-height: 1.5; }
+  .notif-time { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+  /* ===== STAFF SELECTION ===== */
+  .staff-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+  .staff-option {
+    padding: 14px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+  }
+  .staff-option:hover { border-color: var(--accent3); }
+  .staff-option.selected { border-color: var(--accent3); background: rgba(67,233,123,0.1); }
+  .staff-name { font-weight: 600; font-size: 14px; }
+  .staff-role { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+  /* ===== REMINDERS ===== */
+  .reminder-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px;
+    background: var(--surface2);
+    border-radius: 12px;
+    margin-bottom: 10px;
+  }
+  .reminder-info { flex: 1; }
+  .reminder-name { font-weight: 600; font-size: 14px; }
+  .reminder-detail { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  .reminder-timer { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: var(--warning); }
+
+  /* ===== TOAST ===== */
+  .toast-container {
+    position: fixed;
+    top: 20px; right: 20px;
+    z-index: 9999;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .toast {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    min-width: 280px;
+    display: flex; align-items: flex-start; gap: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    animation: slideIn 0.3s ease;
+    border-left: 3px solid var(--accent);
+  }
+  .toast.success { border-left-color: var(--accent3); }
+  .toast.warning { border-left-color: var(--warning); }
+  .toast.error { border-left-color: var(--danger); }
+  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  .toast-icon { font-size: 20px; flex-shrink: 0; }
+  .toast-title { font-weight: 600; font-size: 13px; }
+  .toast-msg { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+  /* ===== MISC ===== */
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+  .flex { display: flex; }
+  .flex-between { display: flex; align-items: center; justify-content: space-between; }
+  .gap-2 { gap: 8px; }
+  .gap-3 { gap: 12px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .mt-2 { margin-top: 8px; }
+  .mt-3 { margin-top: 16px; }
+  .text-dim { color: var(--text-dim); font-size: 13px; }
+  .text-sm { font-size: 12px; }
+  .fw-bold { font-weight: 700; font-family: 'Syne', sans-serif; }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-dim);
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  .section-hidden { display: none !important; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Progress steps */
+  .steps { display: flex; gap: 0; margin-bottom: 28px; }
+  .step {
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    border-bottom: 2px solid var(--border);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+  }
+  .step.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .step.done { color: var(--accent3); border-bottom-color: var(--accent3); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+  input[type="radio"] { display: none; }
+
+  /* ===== PROFILE CARD ===== */
+  .profile-avatar {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; font-weight: 800; font-family: 'Syne', sans-serif;
+    color: white; margin-bottom: 16px;
+    flex-shrink: 0;
+  }
+
+  /* ===== SEARCH BAR ===== */
+  .search-bar {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+  }
+  .search-bar input {
+    background: transparent; border: none; outline: none;
+    color: var(--text); font-size: 14px; flex: 1;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .search-bar input::placeholder { color: var(--text-dim); }
+
+  /* ===== FILTER TABS ===== */
+  .filter-tabs {
+    display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+  }
+  .filter-tab {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .filter-tab:hover, .filter-tab.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+  /* ===== ANALYTICS CHART BARS ===== */
+  .bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 80px; margin-top: 12px; }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .bar { width: 100%; border-radius: 4px 4px 0 0; background: var(--accent); opacity: 0.7; transition: opacity 0.2s; min-height: 4px; }
+  .bar:hover { opacity: 1; }
+  .bar-label { font-size: 10px; color: var(--text-dim); text-align: center; }
+
+  /* ===== MESSAGE THREAD ===== */
+  .message-thread { display: flex; flex-direction: column; gap: 12px; max-height: 300px; overflow-y: auto; padding: 4px; }
+  .message-bubble {
+    max-width: 75%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .message-bubble.sent { background: rgba(108,99,255,0.2); border: 1px solid rgba(108,99,255,0.3); align-self: flex-end; }
+  .message-bubble.received { background: var(--surface2); border: 1px solid var(--border); align-self: flex-start; }
+  .message-meta { font-size: 10px; color: var(--text-dim); margin-top: 4px; }
+
+  /* ===== ACTIVITY LOG ===== */
+  .activity-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .activity-item:last-child { border-bottom: none; }
+  .activity-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); margin-top: 5px; flex-shrink: 0;
+  }
+  .activity-dot.green { background: var(--accent3); }
+  .activity-dot.orange { background: var(--client-color); }
+  .activity-dot.red { background: var(--danger); }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 768px) {
+    .sidebar { width: 200px; min-width: 200px; }
+    .main-content { padding: 20px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .login-box { width: 95vw; padding: 32px 24px; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .setup-box { padding: 32px 24px; }
+  }
+  @media (max-width: 540px) {
+    .sidebar { display: none; }
+    .login-box { width: 100vw; border-radius: 0; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }
+  }
+
+  /* Inline actions row */
+  .actions-row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* Progress bar */
+  .progress-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+  .progress-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--accent3)); transition: width 0.5s ease; }
+
+  /* Staff workload indicator */
+  .workload-pill {
+    font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600;
+  }
+  .workload-pill.low { background: rgba(67,233,123,0.2); color: var(--accent3); }
+  .workload-pill.medium { background: rgba(255,165,2,0.2); color: var(--warning); }
+  .workload-pill.high { background: rgba(255,71,87,0.2); color: var(--danger); }
+
+  /* Input with icon */
+  .input-with-icon { position: relative; }
+  .input-with-icon input { padding-left: 38px; }
+  .input-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 15px; pointer-events: none; }
+
+  /* Supabase connected badge */
+  .supabase-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(67,233,123,0.1); border: 1px solid rgba(67,233,123,0.3);
+    border-radius: 20px; padding: 4px 10px; font-size: 11px; color: var(--accent3);
+    font-weight: 600;
+  }
+  .supabase-badge.offline { background: rgba(255,71,87,0.1); border-color: rgba(255,71,87,0.3); color: var(--danger); }
+</style>
+</head>
+<body>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ==================== LOADING SCREEN ==================== -->
+<div id="loading-screen">
+  <div class="loading-logo">WebProCreation</div>
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loadingText">Connecting to database...</div>
+</div>
+
+<!-- ==================== SUPABASE SETUP MODAL ==================== -->
+<div id="supabaseSetupModal" style="display:none;">
+  <div class="setup-box">
+    <div style="font-family:'Syne',sans-serif; font-size:24px; font-weight:800; margin-bottom:8px;">
+      🔌 Connect Supabase
+    </div>
+    <div style="color:var(--text-dim); font-size:13px; margin-bottom:28px;">
+      Enter your Supabase project credentials to get started
+    </div>
+
+    <div style="background:rgba(108,99,255,0.08); border:1px solid rgba(108,99,255,0.25); border-radius:12px; padding:16px; margin-bottom:24px; font-size:13px; line-height:1.8; color:var(--text-dim);">
+      <strong style="color:var(--text); display:block; margin-bottom:6px;">📋 Where to find these:</strong>
+      1. Go to <a href="https://supabase.com" target="_blank" style="color:var(--accent)">supabase.com</a> → Your Project<br>
+      2. Click <strong style="color:var(--text)">Settings → API</strong><br>
+      3. Copy <strong style="color:var(--accent)">Project URL</strong> and <strong style="color:var(--accent)">anon / public key</strong>
+    </div>
+
+    <div class="form-group">
+      <label>Supabase Project URL *</label>
+      <input type="url" id="setup-url" placeholder="https://xxxxxxxxxxx.supabase.co">
+    </div>
+    <div class="form-group">
+      <label>Supabase Anon / Public Key *</label>
+      <input type="text" id="setup-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+    </div>
+
+    <button class="btn btn-primary" onclick="initSupabase()" id="connectBtn">🚀 Connect & Continue</button>
+
+    <div id="setupError" style="margin-top:12px; color:var(--danger); font-size:13px; display:none;"></div>
+
+    <div style="margin-top:20px; padding:14px; background:var(--surface2); border-radius:10px; font-size:12px; color:var(--text-dim); line-height:1.7;">
+      <strong style="color:var(--text);">⚠️ First time?</strong> After connecting, run the SQL setup in Supabase SQL Editor
+      (see the instructions document that came with this file)
+    </div>
+  </div>
+</div>
+
+<!-- ==================== EMAIL SETUP MODAL ==================== -->
+<div class="modal-overlay" id="emailSetupModal" style="z-index:2000;">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-title">⚙️ Email Setup</div>
+    <div class="modal-subtitle">Connect EmailJS to send real emails — takes 2 minutes</div>
+
+    <div style="background:rgba(108,99,255,0.08); border:1px solid rgba(108,99,255,0.25); border-radius:12px; padding:16px; margin-bottom:20px; font-size:13px; line-height:1.8; color:var(--text-dim);">
+      <strong style="color:var(--text); display:block; margin-bottom:8px;">📋 Quick Setup Steps:</strong>
+      1. Go to <a href="https://www.emailjs.com" target="_blank" style="color:var(--accent)">emailjs.com</a> → Sign up free<br>
+      2. Add an <strong style="color:var(--text)">Email Service</strong> (Gmail) → Copy <strong style="color:var(--accent)">Service ID</strong><br>
+      3. Create <strong style="color:var(--text)">Email Templates</strong> → Copy <strong style="color:var(--accent)">Template IDs</strong><br>
+      4. Go to <strong style="color:var(--text)">Account → API Keys</strong> → Copy <strong style="color:var(--accent)">Public Key</strong>
+    </div>
+
+    <div class="grid-2">
+      <div class="form-group">
+        <label>EmailJS Public Key *</label>
+        <input type="text" id="ejs-public-key" placeholder="user_XXXXXXXXXXXX">
+      </div>
+      <div class="form-group">
+        <label>Service ID *</label>
+        <input type="text" id="ejs-service-id" placeholder="service_abc123">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Admin Email (Your Email) *</label>
+      <input type="email" id="ejs-admin-email" placeholder="you@gmail.com">
+    </div>
+
+    <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-dim); margin-bottom:10px; font-weight:600;">Template IDs</div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label>Staff Assignment Template</label>
+        <input type="text" id="ejs-tpl-assign" placeholder="template_assign">
+      </div>
+      <div class="form-group">
+        <label>Client Delivery Template</label>
+        <input type="text" id="ejs-tpl-deliver" placeholder="template_deliver">
+      </div>
+      <div class="form-group">
+        <label>Client Confirmation Template</label>
+        <input type="text" id="ejs-tpl-confirm" placeholder="template_confirm">
+      </div>
+      <div class="form-group">
+        <label>Staff Reminder (3hr) Template</label>
+        <input type="text" id="ejs-tpl-reminder" placeholder="template_reminder">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Admin Escalation (6hr) Template</label>
+      <input type="text" id="ejs-tpl-escalate" placeholder="template_escalate">
+    </div>
+
+    <div style="display:flex; gap:10px; margin-top:4px;">
+      <button class="btn btn-primary" style="flex:1" onclick="saveEmailConfig()">💾 Save & Connect</button>
+      <button class="btn btn-outline" style="flex:1" onclick="skipEmailSetup()">Skip (No Emails)</button>
+    </div>
+    <div id="emailTestResult" style="margin-top:12px; font-size:13px; display:none;"></div>
+  </div>
+</div>
+
+<!-- ==================== LOGIN SCREEN ==================== -->
+<div id="login-screen" style="display:none;">
+  <div class="login-bg"></div>
+  <div class="login-box">
+    <div class="login-logo">WebProCreation</div>
+    <div class="login-tagline">Client & Project Management Portal</div>
+
+    <div class="login-roles">
+      <button class="role-btn active" data-role="admin" onclick="selectRole('admin')">👑 Admin</button>
+      <button class="role-btn" data-role="staff" onclick="selectRole('staff')">🎨 Staff</button>
+      <button class="role-btn" data-role="client" onclick="selectRole('client')">💼 Client</button>
+    </div>
+
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="your@email.com" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn btn-primary" id="loginBtn" onclick="doLogin()">Login →</button>
+    <div id="loginError" style="margin-top:12px; color:var(--danger); font-size:13px; text-align:center; display:none;"></div>
+
+    <div style="margin-top:16px; text-align:center;">
+      <span class="supabase-badge" id="dbStatusBadge">⚡ Supabase Connected</span>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MAIN APP ==================== -->
+<div id="app">
+  <div class="app-layout">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-logo">WebProCreation</div>
+      <div class="user-badge" id="userBadge">Admin Panel</div>
+
+      <div class="nav-section" id="adminNav">
+        <div class="nav-label">Admin</div>
+        <div class="nav-item active" onclick="showPage('admin-dashboard')"><span class="icon">📊</span> Dashboard <span class="badge" id="newProjectBadge" style="display:none">0</span></div>
+        <div class="nav-item" onclick="showPage('admin-projects')"><span class="icon">📁</span> All Projects</div>
+        <div class="nav-item" onclick="showPage('admin-assign')"><span class="icon">🎯</span> Assign Work <span class="badge" id="assignBadge" style="display:none">0</span></div>
+        <div class="nav-item" onclick="showPage('admin-forward')"><span class="icon">📤</span> Forward to Client <span class="badge" id="forwardBadge" style="display:none">0</span></div>
+        <div class="nav-item" onclick="showPage('admin-reminders')"><span class="icon">⏰</span> Reminders</div>
+        <div class="nav-label" style="margin-top:16px;">Team</div>
+        <div class="nav-item" onclick="showPage('admin-employees')"><span class="icon">👥</span> Employees</div>
+        <div class="nav-item" onclick="showPage('admin-clients')"><span class="icon">💼</span> Clients</div>
+        <div class="nav-label" style="margin-top:16px;">Communication</div>
+        <div class="nav-item" onclick="showPage('admin-messages')"><span class="icon">💬</span> Messages <span class="badge" id="adminMsgBadge" style="display:none">0</span></div>
+        <div class="nav-label" style="margin-top:16px;">Account</div>
+        <div class="nav-item" onclick="showPage('admin-settings')"><span class="icon">⚙️</span> Settings</div>
+      </div>
+
+      <div class="nav-section section-hidden" id="staffNav">
+        <div class="nav-label">Staff</div>
+        <div class="nav-item active" onclick="showPage('staff-dashboard')"><span class="icon">📊</span> My Dashboard</div>
+        <div class="nav-item" onclick="showPage('staff-projects')"><span class="icon">📁</span> My Projects</div>
+        <div class="nav-item" onclick="showPage('staff-submit')"><span class="icon">📤</span> Submit Work</div>
+        <div class="nav-label" style="margin-top:16px;">Account</div>
+        <div class="nav-item" onclick="showPage('staff-profile')"><span class="icon">👤</span> My Profile</div>
+      </div>
+
+      <div class="nav-section section-hidden" id="clientNav">
+        <div class="nav-label">Client</div>
+        <div class="nav-item active" onclick="showPage('client-dashboard')"><span class="icon">📊</span> Dashboard</div>
+        <div class="nav-item" onclick="showPage('client-submit')"><span class="icon">➕</span> New Project</div>
+        <div class="nav-item" onclick="showPage('client-projects')"><span class="icon">📁</span> My Projects</div>
+        <div class="nav-item" onclick="showPage('client-messages')"><span class="icon">💬</span> Messages <span class="badge" id="clientMsgBadge" style="display:none">0</span></div>
+        <div class="nav-label" style="margin-top:16px;">Account</div>
+        <div class="nav-item" onclick="showPage('client-profile')"><span class="icon">👤</span> My Profile</div>
+      </div>
+
+      <div class="sidebar-footer">
+        <button class="btn btn-outline btn-sm" style="width:100%" onclick="doLogout()">🚪 Logout</button>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content" id="mainContent">
+
+      <!-- ========== ADMIN DASHBOARD ========== -->
+      <div class="page active" id="page-admin-dashboard">
+        <div class="page-header flex-between">
+          <div>
+            <div class="page-title">Welcome, Admin 👑</div>
+            <div class="page-subtitle">WebProCreation — Agency Overview</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="showPage('admin-assign')">⚡ Assign Projects</button>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card purple">
+            <div class="stat-num" id="stat-total">0</div>
+            <div class="stat-label">Total Projects</div>
+          </div>
+          <div class="stat-card orange">
+            <div class="stat-num" id="stat-new">0</div>
+            <div class="stat-label">New / Unassigned</div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-num" id="stat-progress">0</div>
+            <div class="stat-label">In Progress</div>
+          </div>
+          <div class="stat-card red">
+            <div class="stat-num" id="stat-overdue">0</div>
+            <div class="stat-label">Awaiting Review</div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px;">
+          <div class="card" style="margin-bottom:0">
+            <div class="card-title">📈 Project Activity (Last 7 Days)</div>
+            <div id="adminChart"></div>
+          </div>
+          <div class="card" style="margin-bottom:0">
+            <div class="card-title">👥 Team Workload</div>
+            <div id="adminWorkload"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📬 New Project Submissions</div>
+          <table class="projects-table" id="adminNewProjectsTable">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Client</th>
+                <th>Description</th>
+                <th>Drive Link</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="adminNewProjectsTbody"></tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🕐 Recent Activity</div>
+          <div id="adminActivityLog"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">⏰ Reminder Alerts</div>
+          <div id="adminReminderAlerts"></div>
+        </div>
+      </div>
+
+      <!-- ========== ADMIN PROJECTS ========== -->
+      <div class="page" id="page-admin-projects">
+        <div class="page-header flex-between">
+          <div>
+            <div class="page-title">All Projects 📁</div>
+            <div class="page-subtitle">Complete project overview across all clients and staff</div>
+          </div>
+          <div class="actions-row">
+            <select id="projectFilterStatus" class="btn btn-outline btn-sm" style="cursor:pointer" onchange="renderAllProjects()">
+              <option value="">All Status</option>
+              <option value="new">New</option>
+              <option value="in-progress">In Progress</option>
+              <option value="submitted">Under Review</option>
+              <option value="delivered">Delivered</option>
+            </select>
+          </div>
+        </div>
+        <div class="search-bar">
+          <span>🔍</span>
+          <input type="text" id="projectSearch" placeholder="Search by client, type, or staff..." oninput="renderAllProjects()">
+        </div>
+        <div class="card">
+          <table class="projects-table">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Client</th>
+                <th>Description</th>
+                <th>Assigned To</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="allProjectsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ========== ADMIN ASSIGN ========== -->
+      <div class="page" id="page-admin-assign">
+        <div class="page-header">
+          <div class="page-title">Assign Work 🎯</div>
+          <div class="page-subtitle">Assign incoming projects to your team members</div>
+        </div>
+        <div id="assignProjectsList"></div>
+      </div>
+
+      <!-- ========== ADMIN FORWARD ========== -->
+      <div class="page" id="page-admin-forward">
+        <div class="page-header">
+          <div class="page-title">Forward to Client 📤</div>
+          <div class="page-subtitle">Review submitted work and send to clients</div>
+        </div>
+        <div id="forwardProjectsList"></div>
+      </div>
+
+      <!-- ========== ADMIN REMINDERS ========== -->
+      <div class="page" id="page-admin-reminders">
+        <div class="page-header">
+          <div class="page-title">Reminder System ⏰</div>
+          <div class="page-subtitle">Automated reminders for staff • Every 3hrs to staff, 6hrs escalation to admin</div>
+        </div>
+        <div class="card">
+          <div class="card-title">📋 Active Reminder Schedule</div>
+          <div id="remindersList"></div>
+        </div>
+      </div>
+
+      <!-- ========== ADMIN EMPLOYEES ========== -->
+      <div class="page" id="page-admin-employees">
+        <div class="page-header flex-between">
+          <div>
+            <div class="page-title">Employees 👥</div>
+            <div class="page-subtitle">Manage your team members</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openModal('addEmployeeModal')">+ Add Employee</button>
+        </div>
+        <div class="search-bar">
+          <span>🔍</span>
+          <input type="text" id="empSearch" placeholder="Search employees..." oninput="renderEmployees()">
+        </div>
+        <div class="card">
+          <div id="employeesList"></div>
+        </div>
+      </div>
+
+      <!-- ========== ADMIN CLIENTS ========== -->
+      <div class="page" id="page-admin-clients">
+        <div class="page-header flex-between">
+          <div>
+            <div class="page-title">Clients 💼</div>
+            <div class="page-subtitle">Manage client accounts and access</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openModal('addClientModal')">+ Add Client</button>
+        </div>
+        <div class="search-bar">
+          <span>🔍</span>
+          <input type="text" id="clientSearch" placeholder="Search clients..." oninput="renderClientsList()">
+        </div>
+        <div class="card">
+          <div id="clientsList"></div>
+        </div>
+      </div>
+
+      <!-- ========== ADMIN MESSAGES ========== -->
+      <div class="page" id="page-admin-messages">
+        <div class="page-header">
+          <div class="page-title">Messages 💬</div>
+          <div class="page-subtitle">Communicate with clients and staff</div>
+        </div>
+        <div style="display:grid; grid-template-columns:260px 1fr; gap:20px; height:calc(100vh - 220px);">
+          <div class="card" style="margin-bottom:0; overflow-y:auto; padding:16px;">
+            <div class="card-title" style="margin-bottom:12px;">Conversations</div>
+            <div id="adminConvList"></div>
+          </div>
+          <div class="card" style="margin-bottom:0; display:flex; flex-direction:column;">
+            <div id="adminMsgHeader" style="margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border);">
+              <div style="font-family:'Syne',sans-serif; font-weight:700; font-size:15px;" id="adminMsgTitle">Select a conversation</div>
+              <div class="text-dim" id="adminMsgSub"></div>
+            </div>
+            <div id="adminMsgThread" class="message-thread" style="flex:1; overflow-y:auto;"></div>
+            <div style="margin-top:12px; display:flex; gap:8px;" id="adminMsgInput">
+              <input type="text" id="adminMsgText" placeholder="Type a message..." style="flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:10px 14px; color:var(--text); font-family:'DM Sans',sans-serif; outline:none;" onkeydown="if(event.key==='Enter')adminSendMsg()">
+              <button class="btn btn-primary btn-sm" onclick="adminSendMsg()">Send →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== ADMIN SETTINGS ========== -->
+      <div class="page" id="page-admin-settings">
+        <div class="page-header">
+          <div class="page-title">Settings ⚙️</div>
+          <div class="page-subtitle">Manage your admin account and platform settings</div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+          <div class="card" style="margin-bottom:0">
+            <div class="card-title">🔒 Change Password</div>
+            <div class="form-group">
+              <label>New Password</label>
+              <input type="password" id="settings-new-pass" placeholder="Enter new password">
+            </div>
+            <div class="form-group">
+              <label>Confirm New Password</label>
+              <input type="password" id="settings-confirm-pass" placeholder="Re-enter new password">
+            </div>
+            <button class="btn btn-primary" onclick="changeAdminPassword()" style="max-width:200px;">🔒 Update Password</button>
+          </div>
+
+          <div class="card" style="margin-bottom:0">
+            <div class="card-title">🏢 Agency Info</div>
+            <div class="form-group">
+              <label>Agency Name</label>
+              <input type="text" id="settings-agency-name" value="WebProCreation">
+            </div>
+            <div class="form-group">
+              <label>Admin Email</label>
+              <input type="email" id="settings-admin-email" placeholder="admin@agency.com" readonly style="opacity:0.7">
+            </div>
+            <div class="form-group">
+              <label>Admin Display Name</label>
+              <input type="text" id="settings-admin-name" placeholder="Your Name">
+            </div>
+            <button class="btn btn-success" onclick="saveAgencySettings()" style="max-width:200px;">💾 Save Changes</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">⚡ Quick Actions</div>
+          <div class="actions-row">
+            <button class="btn btn-outline btn-sm" onclick="exportData()">📥 Export All Data</button>
+            <button class="btn btn-outline btn-sm" onclick="openModal('emailSetupModal')">📧 Email Setup</button>
+            <button class="btn btn-outline btn-sm" onclick="openModal('supabaseReconfigModal')">🔌 Reconfigure Supabase</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📊 Platform Statistics</div>
+          <div id="adminPlatformStats"></div>
+        </div>
+      </div>
+
+      <!-- ========== STAFF DASHBOARD ========== -->
+      <div class="page" id="page-staff-dashboard">
+        <div class="page-header flex-between">
+          <div>
+            <div class="page-title">My Workspace 🎨</div>
+            <div class="page-subtitle">Projects assigned to you</div>
+          </div>
+          <button class="btn btn-success btn-sm" onclick="showPage('staff-submit')">📤 Submit Work</button>
+        </div>
+        <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+          <div class="stat-card purple"><div class="stat-num" id="staff-stat-assigned">0</div><div class="stat-label">Assigned</div></div>
+          <div class="stat-card orange"><div class="stat-num" id="staff-stat-pending">0</div><div class="stat-label">Pending Submission</div></div>
+          <div class="stat-card green"><div class="stat-num" id="staff-stat-done">0</div><div class="stat-label">Completed</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📋 My Active Projects</div>
+          <table class="projects-table">
+            <thead><tr><th>Type</th><th>Client</th><th>Description</th><th>Drive Link</th><th>Assigned</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="staffProjectsTbody"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-title">🔔 Notifications</div>
+          <div id="staffNotifList"></div>
+        </div>
+      </div>
+
+      <!-- ========== STAFF PROJECTS ========== -->
+      <div class="page" id="page-staff-projects">
+        <div class="page-header">
+          <div class="page-title">My Projects 📁</div>
+          <div class="page-subtitle">All projects assigned to you — complete history</div>
+        </div>
+        <div class="filter-tabs" id="staffProjectFilter">
+          <button class="filter-tab active" onclick="filterStaffProjects('all', this)">All</button>
+          <button class="filter-tab" onclick="filterStaffProjects('in-progress', this)">In Progress</button>
+          <button class="filter-tab" onclick="filterStaffProjects('submitted', this)">Submitted</button>
+          <button class="filter-tab" onclick="filterStaffProjects('delivered', this)">Delivered</button>
+        </div>
+        <div class="card">
+          <table class="projects-table">
+            <thead><tr><th>Type</th><th>Client</th><th>Description</th><th>Drive</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="staffAllProjectsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ========== STAFF SUBMIT ========== -->
+      <div class="page" id="page-staff-submit">
+        <div class="page-header">
+          <div class="page-title">Submit Work 📤</div>
+          <div class="page-subtitle">Submit completed work back to admin for review</div>
+        </div>
+        <div id="staffSubmitList"></div>
+      </div>
+
+      <!-- ========== STAFF PROFILE ========== -->
+      <div class="page" id="page-staff-profile">
+        <div class="page-header">
+          <div class="page-title">My Profile 👤</div>
+          <div class="page-subtitle">Manage your account settings</div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+          <div class="card" style="margin-bottom:0">
+            <div class="card-title">👤 Profile Information</div>
+            <div style="display:flex; align-items:center; gap:16px; margin-bottom:24px;">
+              <div class="profile-avatar" id="staffAvatarLetter">A</div>
+              <div>
+                <div style="font-family:'Syne',sans-serif; font-weight:700; font-size:18px;" id="staffProfileName">—</div>
+                <div class="text-dim" id="staffProfileRole">—</div>
+                <div class="text-dim" id="staffProfileEmail">—</div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Display Name</label>
+              <input type="text" id="staff-profile-name" placeholder="Your name">
+            </div>
+            <button class="btn btn-primary" onclick="saveStaffProfile()" style="max-width:180px;">💾 Save</button>
+          </div>
+          <div class="card" style="margin-bottom:0">
+            <div class="card-title">🔒 Change Password</div>
+            <div class="form-group">
+              <label>New Password</label>
+              <input type="password" id="staff-new-pass" placeholder="New password">
+            </div>
+            <div class="form-group">
+              <label>Confirm New Password</label>
+              <input type="password" id="staff-confirm-pass" placeholder="Confirm new password">
+            </div>
+            <button class="btn btn-primary" onclick="changeStaffPassword()" style="max-width:200px;">🔒 Update Password</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== CLIENT DASHBOARD ========== -->
+      <div class="page" id="page-client-dashboard">
+        <div class="page-header flex-between">
+          <div>
+            <div class="page-title">My Projects 💼</div>
+            <div class="page-subtitle">Track your project status</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="showPage('client-submit')">+ New Project</button>
+        </div>
+
+        <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+          <div class="stat-card purple"><div class="stat-num" id="client-stat-total">0</div><div class="stat-label">Total Projects</div></div>
+          <div class="stat-card orange"><div class="stat-num" id="client-stat-active">0</div><div class="stat-label">In Progress</div></div>
+          <div class="stat-card green"><div class="stat-num" id="client-stat-done">0</div><div class="stat-label">Delivered</div></div>
+        </div>
+
+        <div class="card">
+          <div class="flex-between" style="margin-bottom:16px">
+            <div class="card-title" style="margin-bottom:0">📋 Recent Projects</div>
+            <button class="btn btn-outline btn-sm" onclick="showPage('client-projects')">View All →</button>
+          </div>
+          <table class="projects-table">
+            <thead><tr><th>Type</th><th>Description</th><th>Status</th><th>Delivered</th></tr></thead>
+            <tbody id="clientProjectsTbody"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-title">🔔 Notifications</div>
+          <div id="clientNotifList"></div>
+        </div>
+      </div>
+
+      <!-- ========== CLIENT SUBMIT ========== -->
+      <div class="page" id="page-client-submit">
+        <div class="page-header">
+          <div class="page-title">Submit New Project ✨</div>
+          <div class="page-subtitle">Tell us what you need and our team will get started</div>
+        </div>
+
+        <div class="card" style="max-width:600px">
+          <div class="steps">
+            <div class="step active" id="step1">1. Project Type</div>
+            <div class="step" id="step2">2. Details</div>
+            <div class="step" id="step3">3. Confirm</div>
+          </div>
+
+          <!-- Step 1: Type -->
+          <div id="clientStep1">
+            <div class="card-title">What type of content do you need?</div>
+            <div class="type-selector" style="grid-template-columns:repeat(2,1fr);">
+              <button class="type-option" onclick="selectType('Reel')">
+                <span class="type-emoji">🎬</span>Reel
+              </button>
+              <button class="type-option" onclick="selectType('Carousel')">
+                <span class="type-emoji">🎠</span>Carousel
+              </button>
+              <button class="type-option" onclick="selectType('Social Media Design')">
+                <span class="type-emoji">📱</span>Social Media Design
+              </button>
+              <button class="type-option" onclick="selectType('Reel Cover')">
+                <span class="type-emoji">🖼️</span>Reel Cover
+              </button>
+            </div>
+            <div style="margin-top:12px;">
+              <button class="type-option" style="width:100%; display:flex; align-items:center; justify-content:center; gap:10px; padding:14px 20px;" onclick="selectType('Other')">
+                <span style="font-size:20px;">➕</span><span>Other (Add Link + Description)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 2: Details -->
+          <div id="clientStep2" style="display:none">
+            <div class="form-group">
+              <label>Google Drive Link <span style="color:var(--accent)">*</span></label>
+              <input type="url" id="client-drive-link" placeholder="https://drive.google.com/...">
+            </div>
+            <div class="form-group">
+              <label>Project Description <span style="color:var(--accent)">*</span></label>
+              <textarea id="client-description" placeholder="Describe what you need — style, mood, references, any specific requirements..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>Deadline / Preferred Delivery</label>
+              <input type="date" id="client-deadline">
+            </div>
+            <div class="form-group">
+              <label>Selected Type</label>
+              <input type="text" id="client-type-display" readonly style="opacity:0.7">
+            </div>
+            <div class="form-group" id="other-link-group" style="display:none;">
+              <label>Reference / Inspiration Link</label>
+              <input type="url" id="client-other-link" placeholder="https://www.example.com/reference...">
+            </div>
+            <div class="flex gap-2">
+              <button class="btn btn-outline btn-sm" onclick="goStep(1)">← Back</button>
+              <button class="btn btn-primary btn-sm" onclick="goStep(3)">Next →</button>
+            </div>
+          </div>
+
+          <!-- Step 3: Confirm -->
+          <div id="clientStep3" style="display:none">
+            <div class="card-title">Confirm Your Request</div>
+            <div id="clientConfirmDetails" style="background:var(--surface2); border-radius:12px; padding:20px; margin-bottom:20px;"></div>
+            <div class="flex gap-2">
+              <button class="btn btn-outline btn-sm" onclick="goStep(2)">← Back</button>
+              <button class="btn btn-primary" id="submitProjectBtn" onclick="submitClientProject()">🚀 Submit Project</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== CLIENT PROJECTS ========== -->
+      <div class="page" id="page-client-projects">
+        <div class="page-header">
+          <div class="page-title">All My Projects 📁</div>
+          <div class="page-subtitle">Complete history of all your project submissions</div>
+        </div>
+        <div class="filter-tabs" id="clientProjectFilter">
+          <button class="filter-tab active" onclick="filterClientProjects('all', this)">All</button>
+          <button class="filter-tab" onclick="filterClientProjects('new', this)">New</button>
+          <button class="filter-tab" onclick="filterClientProjects('in-progress', this)">In Progress</button>
+          <button class="filter-tab" onclick="filterClientProjects('submitted', this)">Under Review</button>
+          <button class="filter-tab" onclick="filterClientProjects('delivered', this)">Delivered</button>
+        </div>
+        <div class="card">
+          <table class="projects-table">
+            <thead><tr><th>Type</th><th>Description</th><th>Drive</th><th>Deadline</th><th>Status</th><th>Deliverable</th></tr></thead>
+            <tbody id="clientAllProjectsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ========== CLIENT MESSAGES ========== -->
+      <div class="page" id="page-client-messages">
+        <div class="page-header">
+          <div class="page-title">Messages 💬</div>
+          <div class="page-subtitle">Direct communication with the WebProCreation team</div>
+        </div>
+        <div class="card" style="display:flex; flex-direction:column; height:calc(100vh - 220px);">
+          <div style="padding-bottom:12px; border-bottom:1px solid var(--border); margin-bottom:12px;">
+            <div style="font-family:'Syne',sans-serif; font-weight:700;">💬 Chat with Admin</div>
+            <div class="text-dim">WebProCreation Support Team</div>
+          </div>
+          <div id="clientMsgThread" class="message-thread" style="flex:1; overflow-y:auto;"></div>
+          <div style="margin-top:12px; display:flex; gap:8px;">
+            <input type="text" id="clientMsgText" placeholder="Type a message..." style="flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:10px 14px; color:var(--text); font-family:'DM Sans',sans-serif; outline:none;" onkeydown="if(event.key==='Enter')clientSendMsg()">
+            <button class="btn btn-primary btn-sm" onclick="clientSendMsg()">Send →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== CLIENT PROFILE ========== -->
+      <div class="page" id="page-client-profile">
+        <div class="page-header">
+          <div class="page-title">My Profile 👤</div>
+          <div class="page-subtitle">Manage your account information</div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+          <div class="card" style="margin-bottom:0">
+            <div class="card-title">👤 Profile Information</div>
+            <div style="display:flex; align-items:center; gap:16px; margin-bottom:24px;">
+              <div class="profile-avatar" id="clientAvatarLetter">C</div>
+              <div>
+                <div style="font-family:'Syne',sans-serif; font-weight:700; font-size:18px;" id="clientProfileName">—</div>
+                <div class="text-dim" id="clientProfileEmail">—</div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Business / Display Name</label>
+              <input type="text" id="client-profile-name" placeholder="Your business name">
+            </div>
+            <div class="form-group">
+              <label>Phone Number</label>
+              <input type="text" id="client-profile-phone" placeholder="+92 300 0000000">
+            </div>
+            <button class="btn btn-primary" onclick="saveClientProfile()" style="max-width:180px;">💾 Save</button>
+          </div>
+          <div class="card" style="margin-bottom:0">
+            <div class="card-title">🔒 Change Password</div>
+            <div class="form-group">
+              <label>New Password</label>
+              <input type="password" id="client-new-pass" placeholder="New password">
+            </div>
+            <div class="form-group">
+              <label>Confirm New Password</label>
+              <input type="password" id="client-confirm-pass" placeholder="Confirm new password">
+            </div>
+            <button class="btn btn-primary" onclick="changeClientPassword()" style="max-width:200px;">🔒 Update Password</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end main-content -->
+  </div><!-- end app-layout -->
+</div><!-- end app -->
+
+<!-- ==================== MODALS ==================== -->
+
+<!-- Supabase Reconfig Modal -->
+<div class="modal-overlay" id="supabaseReconfigModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('supabaseReconfigModal')">✕</button>
+    <div class="modal-title">🔌 Supabase Settings</div>
+    <div class="modal-subtitle">Update your Supabase project credentials</div>
+    <div class="form-group">
+      <label>Project URL</label>
+      <input type="url" id="reconfig-url" placeholder="https://xxxxxxxxxxx.supabase.co">
+    </div>
+    <div class="form-group">
+      <label>Anon / Public Key</label>
+      <input type="text" id="reconfig-key" placeholder="eyJ...">
+    </div>
+    <button class="btn btn-primary" onclick="reconfigureSupabase()">🔌 Reconnect</button>
+  </div>
+</div>
+
+<!-- Assign Staff Modal -->
+<div class="modal-overlay" id="assignModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('assignModal')">✕</button>
+    <div class="modal-title">Assign Project 🎯</div>
+    <div class="modal-subtitle" id="assignProjectInfo">Select a team member for this project</div>
+    <div class="card-title" style="margin-bottom:12px">Select Staff Member</div>
+    <div class="staff-grid" id="staffSelectionGrid"></div>
+    <div class="form-group" style="margin-top:8px">
+      <label>Internal Note (Optional)</label>
+      <textarea id="assignNote" placeholder="Any special instructions for this team member..." style="min-height:70px;"></textarea>
+    </div>
+    <button class="btn btn-success" onclick="confirmAssign()">✓ Assign Project</button>
+  </div>
+</div>
+
+<!-- Forward to Client Modal -->
+<div class="modal-overlay" id="forwardModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('forwardModal')">✕</button>
+    <div class="modal-title">Forward to Client 📤</div>
+    <div class="modal-subtitle" id="forwardProjectInfo">Review completed work before sending</div>
+
+    <div id="forwardClientBox" style="
+      background: linear-gradient(135deg, rgba(67,233,123,0.12), rgba(67,233,123,0.05));
+      border: 1.5px solid rgba(67,233,123,0.4);
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    ">
+      <div>
+        <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-dim); margin-bottom:4px;">Sending To</div>
+        <div style="font-family:'Syne',sans-serif; font-size:20px; font-weight:800; color:var(--accent3);" id="forwardClientName"></div>
+        <div style="font-size:12px; color:var(--text-dim); margin-top:2px;" id="forwardClientEmail"></div>
+      </div>
+      <div style="font-size:36px;">💼</div>
+    </div>
+
+    <div id="forwardDetails" style="background:var(--surface2); border-radius:12px; padding:20px; margin-bottom:16px;"></div>
+
+    <div class="form-group">
+      <label>Message to Client (Optional)</label>
+      <textarea id="forwardMessage" placeholder="Add a personal note for the client..."></textarea>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+      <span style="font-size:12px; color:var(--text-dim);">📧 An email notification will be sent automatically</span>
+    </div>
+
+    <button class="btn btn-success" onclick="confirmForward()">📤 Send to Client</button>
+  </div>
+</div>
+
+<!-- Request Revision Modal -->
+<div class="modal-overlay" id="revisionModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('revisionModal')">✕</button>
+    <div class="modal-title">Request Revision ✏️</div>
+    <div class="modal-subtitle">Send the project back to staff for changes</div>
+    <div class="form-group">
+      <label>Revision Notes *</label>
+      <textarea id="revisionNote" placeholder="Describe what changes are needed..." style="min-height:100px;"></textarea>
+    </div>
+    <button class="btn btn-warning" onclick="confirmRevision()">↩ Send for Revision</button>
+  </div>
+</div>
+
+<!-- Add Employee Modal -->
+<div class="modal-overlay" id="addEmployeeModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('addEmployeeModal')">✕</button>
+    <div class="modal-title">Add Employee 👥</div>
+    <div class="modal-subtitle">Add a new team member to the platform</div>
+    <div class="form-group">
+      <label>Full Name</label>
+      <input type="text" id="emp-name" placeholder="e.g. Ahmed Khan">
+    </div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="emp-email" placeholder="ahmed@agency.com">
+    </div>
+    <div class="form-group">
+      <label>Role</label>
+      <select id="emp-role">
+        <option value="Video Editor">🎬 Video Editor</option>
+        <option value="Graphic Designer">🎨 Graphic Designer</option>
+        <option value="Copywriter">✍️ Copywriter</option>
+        <option value="Social Media Manager">📱 Social Media Manager</option>
+        <option value="Motion Designer">✨ Motion Designer</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Password <span style="color:var(--accent)">*</span></label>
+      <input type="password" id="emp-password" placeholder="Set login password for this employee">
+    </div>
+    <button class="btn btn-primary" onclick="addEmployee()">+ Add Employee</button>
+  </div>
+</div>
+
+<!-- Edit Employee Modal -->
+<div class="modal-overlay" id="editEmployeeModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('editEmployeeModal')">✕</button>
+    <div class="modal-title">Edit Employee ✏️</div>
+    <div class="modal-subtitle">Update team member information</div>
+    <input type="hidden" id="edit-emp-id">
+    <div class="form-group">
+      <label>Full Name</label>
+      <input type="text" id="edit-emp-name" placeholder="Full name">
+    </div>
+    <div class="form-group">
+      <label>Role</label>
+      <select id="edit-emp-role">
+        <option value="Video Editor">🎬 Video Editor</option>
+        <option value="Graphic Designer">🎨 Graphic Designer</option>
+        <option value="Copywriter">✍️ Copywriter</option>
+        <option value="Social Media Manager">📱 Social Media Manager</option>
+        <option value="Motion Designer">✨ Motion Designer</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" onclick="saveEditEmployee()">💾 Save Changes</button>
+  </div>
+</div>
+
+<!-- Add Client Modal -->
+<div class="modal-overlay" id="addClientModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('addClientModal')">✕</button>
+    <div class="modal-title">Add Client 💼</div>
+    <div class="modal-subtitle">Add a new client to the platform</div>
+    <div class="form-group">
+      <label>Client Name / Business</label>
+      <input type="text" id="cl-name" placeholder="e.g. Brand XYZ">
+    </div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="cl-email" placeholder="client@brand.com">
+    </div>
+    <div class="form-group">
+      <label>Phone (optional)</label>
+      <input type="text" id="cl-phone" placeholder="+92 300 0000000">
+    </div>
+    <div class="form-group">
+      <label>Password <span style="color:var(--accent)">*</span></label>
+      <input type="password" id="cl-password" placeholder="Set login password for this client">
+    </div>
+    <button class="btn btn-primary" onclick="addClient()">+ Add Client</button>
+  </div>
+</div>
+
+<!-- Staff Submit Modal -->
+<div class="modal-overlay" id="staffSubmitModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('staffSubmitModal')">✕</button>
+    <div class="modal-title">Submit Work 📤</div>
+    <div class="modal-subtitle" id="staffSubmitProjectInfo"></div>
+    <div class="form-group">
+      <label>Client Name</label>
+      <input type="text" id="submit-client-name" readonly style="opacity:0.7">
+    </div>
+    <div class="form-group">
+      <label>Drive Link (Completed Work) <span style="color:var(--accent)">*</span></label>
+      <input type="url" id="submit-drive-link" placeholder="https://drive.google.com/...">
+    </div>
+    <div class="form-group">
+      <label>Description / Notes <span style="color:var(--accent)">*</span></label>
+      <textarea id="submit-description" placeholder="What did you do? Any notes for admin?"></textarea>
+    </div>
+    <button class="btn btn-success" onclick="confirmStaffSubmit()">✓ Submit to Admin</button>
+  </div>
+</div>
+
+<!-- Project Detail Modal -->
+<div class="modal-overlay" id="projectDetailModal">
+  <div class="modal" style="max-width:600px">
+    <button class="modal-close" onclick="closeModal('projectDetailModal')">✕</button>
+    <div class="modal-title" id="pdTitle">Project Details</div>
+    <div id="pdBody"></div>
+  </div>
+</div>
+
+<!-- Confirm Delete Modal -->
+<div class="modal-overlay" id="confirmDeleteModal">
+  <div class="modal" style="max-width:380px; text-align:center;">
+    <div style="font-size:48px; margin-bottom:12px;">⚠️</div>
+    <div class="modal-title">Confirm Delete</div>
+    <div class="modal-subtitle" id="confirmDeleteMsg">This action cannot be undone.</div>
+    <div style="display:flex; gap:10px; margin-top:8px;">
+      <button class="btn btn-outline" onclick="closeModal('confirmDeleteModal')">Cancel</button>
+      <button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// =====================================================
+// SUPABASE CONFIGURATION
+// Paste your credentials here OR enter them in the setup screen
+// =====================================================
+const SUPABASE_CONFIG = {
+  url: '',       // e.g. "https://abcdefgh.supabase.co"
+  anonKey: ''    // e.g. "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+};
+
+// =====================================================
+// SUPABASE CLIENT
+// =====================================================
+let supabase = null;
+
+function getStoredConfig() {
+  try {
+    const saved = localStorage.getItem('wpc_supabase_config');
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return null;
+}
+
+function storeConfig(url, key) {
+  localStorage.setItem('wpc_supabase_config', JSON.stringify({ url, anonKey: key }));
+}
+
+async function initSupabase(url, key) {
+  // If called from setup form
+  if (!url) {
+    url = document.getElementById('setup-url').value.trim();
+    key = document.getElementById('setup-key').value.trim();
+    if (!url || !key) {
+      document.getElementById('setupError').style.display = 'block';
+      document.getElementById('setupError').textContent = '❌ Both Project URL and Anon Key are required';
+      return;
+    }
+    const btn = document.getElementById('connectBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Connecting...';
+  }
+
+  try {
+    const { createClient } = window.supabase;
+    supabase = createClient(url, key);
+
+    // Quick test
+    const { error } = await supabase.from('profiles').select('id').limit(1);
+    if (error && error.code !== 'PGRST116') {
+      throw new Error(error.message);
+    }
+
+    storeConfig(url, key);
+    document.getElementById('supabaseSetupModal').style.display = 'none';
+    setLoadingText('Connected! Loading session...');
+
+    await checkSession();
+  } catch(e) {
+    const errEl = document.getElementById('setupError');
+    if (errEl) {
+      errEl.style.display = 'block';
+      errEl.textContent = '❌ Could not connect: ' + e.message + ' — Check your URL and key, and make sure SQL setup is complete.';
+    }
+    const btn = document.getElementById('connectBtn');
+    if (btn) { btn.disabled = false; btn.textContent = '🚀 Connect & Continue'; }
+    setLoadingText('Connection failed');
+    showToast('error', '❌ Connection Failed', e.message);
+  }
+}
+
+async function reconfigureSupabase() {
+  const url = document.getElementById('reconfig-url').value.trim();
+  const key = document.getElementById('reconfig-key').value.trim();
+  if (!url || !key) { showToast('warning', '⚠️', 'Both fields required'); return; }
+  storeConfig(url, key);
+  closeModal('supabaseReconfigModal');
+  showToast('info', '🔄 Reconnecting...', 'Reloading page');
+  setTimeout(() => location.reload(), 1200);
+}
+
+// =====================================================
+// EMAILJS CONFIG
+// =====================================================
+const EMAIL_CFG = {
+  publicKey: '',
+  serviceId: '',
+  adminEmail: '',
+  templates: { assign: '', deliver: '', confirm: '', reminder: '', escalate: '' },
+  enabled: false
+};
+
+function saveEmailConfig() {
+  const pk  = document.getElementById('ejs-public-key').value.trim();
+  const svc = document.getElementById('ejs-service-id').value.trim();
+  const adm = document.getElementById('ejs-admin-email').value.trim();
+  if (!pk || !svc || !adm) { showTestResult('error', '❌ Public Key, Service ID and Admin Email are required.'); return; }
+  EMAIL_CFG.publicKey  = pk; EMAIL_CFG.serviceId  = svc; EMAIL_CFG.adminEmail = adm;
+  EMAIL_CFG.templates.assign   = document.getElementById('ejs-tpl-assign').value.trim();
+  EMAIL_CFG.templates.deliver  = document.getElementById('ejs-tpl-deliver').value.trim();
+  EMAIL_CFG.templates.confirm  = document.getElementById('ejs-tpl-confirm').value.trim();
+  EMAIL_CFG.templates.reminder = document.getElementById('ejs-tpl-reminder').value.trim();
+  EMAIL_CFG.templates.escalate = document.getElementById('ejs-tpl-escalate').value.trim();
+  try { emailjs.init(pk); } catch(e) {}
+  EMAIL_CFG.enabled = true;
+  saveEmailCfgToSupabase();
+  showTestResult('info', '⏳ Sending test email...');
+  emailjs.send(svc, EMAIL_CFG.templates.assign || EMAIL_CFG.templates.confirm || '', {
+    to_email: adm, to_name: 'Admin', client_name: 'Test', project_type: 'Test', description: 'EmailJS works!', drive_link: 'https://drive.google.com'
+  }).then(() => { showTestResult('success', '✅ Connected! Test email sent to ' + adm); setTimeout(() => closeModal('emailSetupModal'), 2000); })
+    .catch(err => showTestResult('error', '❌ Error: ' + (err.text || JSON.stringify(err))));
+}
+
+async function saveEmailCfgToSupabase() {
+  if (!supabase) return;
+  await supabase.from('settings').upsert({ key: 'email_config', value: JSON.stringify(EMAIL_CFG) }, { onConflict: 'key' });
+}
+
+async function loadEmailCfg() {
+  if (!supabase) return;
+  const { data } = await supabase.from('settings').select('value').eq('key', 'email_config').single();
+  if (data) {
+    try {
+      const cfg = JSON.parse(data.value);
+      Object.assign(EMAIL_CFG, cfg);
+      if (EMAIL_CFG.enabled && EMAIL_CFG.publicKey) {
+        try { emailjs.init(EMAIL_CFG.publicKey); } catch(e) {}
+      }
+    } catch(e) {}
+  }
+}
+
+function skipEmailSetup() { EMAIL_CFG.enabled = false; closeModal('emailSetupModal'); showToast('warning', '📴 No Emails', 'Email notifications disabled'); }
+function showTestResult(type, msg) {
+  const el = document.getElementById('emailTestResult');
+  const colors = { success: 'var(--accent3)', error: 'var(--danger)', info: 'var(--text-dim)' };
+  el.style.display = 'block'; el.style.color = colors[type]; el.textContent = msg;
+}
+
+async function sendEmail(templateKey, params) {
+  if (!EMAIL_CFG.enabled) { console.log('[EMAIL DEMO]', templateKey, params); return; }
+  const tplId = EMAIL_CFG.templates[templateKey];
+  if (!tplId) return;
+  try { await emailjs.send(EMAIL_CFG.serviceId, tplId, { ...params, reply_to: EMAIL_CFG.adminEmail }); }
+  catch(err) { showToast('error', '📧 Email Failed', 'Check EmailJS config'); }
+}
+
+function emailStaffAssigned(staff, project) { sendEmail('assign', { to_email: staff.email, to_name: staff.full_name, client_name: project.client_name, project_type: project.type, description: project.description, drive_link: project.drive_link }); }
+function emailClientDelivery(client, project, msg) { sendEmail('deliver', { to_email: client.email, to_name: client.full_name || client.email, project_type: project.type, drive_link: project.submitted_drive || project.drive_link, admin_message: msg || 'Your project is complete!' }); }
+function emailClientConfirm(client, project) { sendEmail('confirm', { to_email: client.email, to_name: client.full_name || client.email, project_type: project.type, description: project.description }); }
+function emailStaffReminder(staff, project, hrs) { sendEmail('reminder', { to_email: staff.email, to_name: staff.full_name, project_type: project.type, client_name: project.client_name, hours_elapsed: hrs.toString() }); }
+function emailAdminEscalate(project, staff, hrs) { sendEmail('escalate', { to_email: EMAIL_CFG.adminEmail, staff_name: staff ? staff.full_name : 'Staff', project_type: project.type, client_name: project.client_name, hours_elapsed: hrs.toString() }); }
+
+// =====================================================
+// APP STATE (runtime cache)
+// =====================================================
+let APP = {
+  currentUser: null,
+  currentProfile: null,
+  selectedRole: 'admin',
+  selectedAssignProject: null,
+  selectedStaff: null,
+  selectedForwardProject: null,
+  selectedProjectType: null,
+  staffSubmitProjectId: null,
+  revisionProjectId: null,
+  adminCurrentConv: null,
+  staffProjectFilter: 'all',
+  clientProjectFilter: 'all',
+  // Cached data
+  projects: [],
+  employees: [],
+  clients: [],
+  notifications: [],
+  messages: [],
+  agencySettings: { agencyName: 'WebProCreation', adminName: 'Admin' }
+};
+
+// =====================================================
+// INIT
+// =====================================================
+function setLoadingText(t) {
+  const el = document.getElementById('loadingText');
+  if (el) el.textContent = t;
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  // Check if creds are hardcoded
+  if (SUPABASE_CONFIG.url && SUPABASE_CONFIG.anonKey) {
+    await initSupabase(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+    return;
+  }
+
+  // Check localStorage
+  const saved = getStoredConfig();
+  if (saved && saved.url && saved.anonKey) {
+    setLoadingText('Reconnecting to Supabase...');
+    await initSupabase(saved.url, saved.anonKey);
+    return;
+  }
+
+  // Show setup screen
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('supabaseSetupModal').style.display = 'flex';
+});
+
+async function checkSession() {
+  setLoadingText('Checking session...');
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (session) {
+    setLoadingText('Loading your data...');
+    await loadUserProfile(session.user);
+    await loadEmailCfg();
+    hideLoading();
+    return;
+  }
+
+  // Check for auth state change (e.g. magic link)
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      setLoadingText('Loading your data...');
+      await loadUserProfile(session.user);
+      await loadEmailCfg();
+      hideLoading();
+    } else if (event === 'SIGNED_OUT') {
+      showLoginScreen();
+    }
+  });
+
+  hideLoading();
+}
+
+async function loadUserProfile(authUser) {
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', authUser.id)
+    .single();
+
+  if (error || !profile) {
+    showToast('error', '❌ Profile Error', 'Could not load user profile. Check Supabase setup.');
+    showLoginScreen();
+    return;
+  }
+
+  APP.currentUser = authUser;
+  APP.currentProfile = profile;
+
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+
+  await loadAgencySettings();
+  await setupDashboard();
+  setupRealtimeSubscriptions();
+}
+
+function hideLoading() {
+  document.getElementById('loading-screen').style.display = 'none';
+  if (!APP.currentUser) showLoginScreen();
+}
+
+function showLoginScreen() {
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+// =====================================================
+// LOGIN / LOGOUT
+// =====================================================
+function selectRole(role) {
+  APP.selectedRole = role;
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[data-role="${role}"]`).classList.add('active');
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const pass  = document.getElementById('login-password').value;
+  const errEl = document.getElementById('loginError');
+  const btn   = document.getElementById('loginBtn');
+
+  if (!email || !pass) { errEl.style.display='block'; errEl.textContent='Please enter email and password'; return; }
+
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = '⏳ Signing in...';
+
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+
+  if (error) {
+    errEl.style.display = 'block';
+    errEl.textContent = '❌ ' + (error.message === 'Invalid login credentials' ? 'Invalid email or password' : error.message);
+    btn.disabled = false;
+    btn.textContent = 'Login →';
+    return;
+  }
+
+  // Verify role matches selected tab
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single();
+
+  if (profile && profile.role !== APP.selectedRole) {
+    showToast('warning', '⚠️ Wrong Portal', `This account is a ${profile.role} — please select the correct portal tab`);
+    await supabase.auth.signOut();
+    btn.disabled = false;
+    btn.textContent = 'Login →';
+    return;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Login →';
+
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+
+  setLoadingText('Loading your workspace...');
+  document.getElementById('loading-screen').style.display = 'flex';
+
+  await loadUserProfile(data.user);
+  await loadEmailCfg();
+  document.getElementById('loading-screen').style.display = 'none';
+}
+
+async function doLogout() {
+  await supabase.auth.signOut();
+  APP.currentUser = null;
+  APP.currentProfile = null;
+  APP.projects = []; APP.employees = []; APP.clients = [];
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-password').value = '';
+}
+
+// =====================================================
+// SUPABASE REALTIME
+// =====================================================
+function setupRealtimeSubscriptions() {
+  if (!supabase || !APP.currentProfile) return;
+
+  // Listen to project changes
+  supabase.channel('projects-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, (payload) => {
+      handleProjectChange(payload);
+    })
+    .subscribe();
+
+  // Listen to notification changes for current user
+  supabase.channel('notif-changes')
+    .on('postgres_changes', {
+      event: 'INSERT', schema: 'public', table: 'notifications',
+      filter: `user_id=eq.${APP.currentProfile.id}`
+    }, (payload) => {
+      if (payload.new) {
+        showToast('info', '🔔 New Notification', payload.new.text.substring(0, 60));
+        updateBadges();
+      }
+    })
+    .subscribe();
+
+  // Listen to message changes
+  supabase.channel('message-changes')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+      handleNewMessage(payload.new);
+    })
+    .subscribe();
+}
+
+async function handleProjectChange(payload) {
+  // Refresh current page data
+  const activePage = document.querySelector('.page.active');
+  if (!activePage) return;
+  const pageId = activePage.id.replace('page-', '');
+  await renderPage(pageId);
+  updateBadges();
+}
+
+async function handleNewMessage(msg) {
+  if (!APP.currentProfile) return;
+  const role = APP.currentProfile.role;
+  const userId = APP.currentProfile.id;
+
+  if (role === 'admin' && msg.sender_id !== userId) {
+    updateBadges();
+    const adminThread = document.getElementById('adminMsgThread');
+    if (adminThread && APP.adminCurrentConv === msg.conversation_id) {
+      await openAdminConv(APP.adminCurrentConv);
+    }
+  }
+  if ((role === 'staff' || role === 'client')) {
+    const clientThread = document.getElementById('clientMsgThread');
+    if (clientThread && clientThread.closest('.page.active')) {
+      await renderClientMessages();
+    }
+    updateBadges();
+  }
+}
+
+// =====================================================
+// DASHBOARD SETUP
+// =====================================================
+async function setupDashboard() {
+  const role = APP.currentProfile.role;
+  const name = APP.currentProfile.full_name || APP.currentUser.email;
+
+  ['adminNav', 'staffNav', 'clientNav'].forEach(id => {
+    document.getElementById(id).classList.add('section-hidden');
+  });
+  const badge = document.getElementById('userBadge');
+  badge.className = `user-badge ${role}`;
+
+  if (role === 'admin') {
+    document.getElementById('adminNav').classList.remove('section-hidden');
+    badge.textContent = `👑 ${APP.agencySettings.adminName || name}`;
+    showPage('admin-dashboard');
+    startReminderSystem();
+    await updateBadges();
+  } else if (role === 'staff') {
+    document.getElementById('staffNav').classList.remove('section-hidden');
+    badge.textContent = `🎨 ${name}`;
+    showPage('staff-dashboard');
+  } else if (role === 'client') {
+    document.getElementById('clientNav').classList.remove('section-hidden');
+    badge.textContent = `💼 ${name}`;
+    showPage('client-dashboard');
+    await updateBadges();
+  }
+}
+
+async function updateBadges() {
+  if (!supabase || !APP.currentProfile) return;
+  const role = APP.currentProfile.role;
+  const userId = APP.currentProfile.id;
+
+  if (role === 'admin') {
+    const { data: newProj } = await supabase.from('projects').select('id', { count: 'exact' }).eq('status', 'new');
+    const { data: subProj } = await supabase.from('projects').select('id', { count: 'exact' }).eq('status', 'submitted');
+    const newCount  = newProj ? newProj.length : 0;
+    const subCount  = subProj ? subProj.length : 0;
+
+    const ab = document.getElementById('assignBadge');
+    if (ab) { ab.textContent = newCount; ab.style.display = newCount > 0 ? 'inline' : 'none'; }
+    const fb = document.getElementById('forwardBadge');
+    if (fb) { fb.textContent = subCount; fb.style.display = subCount > 0 ? 'inline' : 'none'; }
+
+    // Unread messages from clients
+    const { data: unreadMsgs } = await supabase.from('messages')
+      .select('id').eq('read', false).neq('sender_id', userId);
+    const unreadCount = unreadMsgs ? unreadMsgs.length : 0;
+    const amb = document.getElementById('adminMsgBadge');
+    if (amb) { amb.textContent = unreadCount; amb.style.display = unreadCount > 0 ? 'inline' : 'none'; }
+  }
+
+  if (role === 'client') {
+    const { data: unreadMsgs } = await supabase.from('messages')
+      .select('id').eq('read', false).neq('sender_id', userId)
+      .eq('conversation_id', await getOrCreateConversation(userId));
+    const cnt = unreadMsgs ? unreadMsgs.length : 0;
+    const cmb = document.getElementById('clientMsgBadge');
+    if (cmb) { cmb.textContent = cnt; cmb.style.display = cnt > 0 ? 'inline' : 'none'; }
+  }
+}
+
+// =====================================================
+// AGENCY SETTINGS
+// =====================================================
+async function loadAgencySettings() {
+  const { data } = await supabase.from('settings').select('value').eq('key', 'agency_settings').single();
+  if (data) {
+    try { Object.assign(APP.agencySettings, JSON.parse(data.value)); } catch(e) {}
+  }
+}
+
+// =====================================================
+// NAVIGATION
+// =====================================================
+function showPage(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  const page = document.getElementById(`page-${pageId}`);
+  if (page) page.classList.add('active');
+
+  document.querySelectorAll('.nav-item').forEach(item => {
+    if (item.getAttribute('onclick') && item.getAttribute('onclick').includes(`'${pageId}'`)) {
+      item.classList.add('active');
+    }
+  });
+
+  renderPage(pageId);
+}
+
+async function renderPage(pageId) {
+  switch(pageId) {
+    case 'admin-dashboard':  await renderAdminDashboard(); break;
+    case 'admin-projects':   await renderAllProjects(); break;
+    case 'admin-assign':     await renderAssignPage(); break;
+    case 'admin-forward':    await renderForwardPage(); break;
+    case 'admin-reminders':  await renderRemindersPage(); break;
+    case 'admin-employees':  await renderEmployees(); break;
+    case 'admin-clients':    await renderClientsList(); break;
+    case 'admin-messages':   await renderAdminMessages(); break;
+    case 'admin-settings':   await renderAdminSettings(); break;
+    case 'staff-dashboard':  await renderStaffDashboard(); break;
+    case 'staff-projects':   await renderStaffProjects(); break;
+    case 'staff-submit':     await renderStaffSubmitPage(); break;
+    case 'staff-profile':    renderStaffProfile(); break;
+    case 'client-dashboard': await renderClientDashboard(); break;
+    case 'client-projects':  await renderClientProjects(); break;
+    case 'client-submit':    resetClientForm(); break;
+    case 'client-messages':  await renderClientMessages(); break;
+    case 'client-profile':   renderClientProfile(); break;
+  }
+}
+
+// =====================================================
+// ADMIN DASHBOARD
+// =====================================================
+async function renderAdminDashboard() {
+  const { data: projects } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
+  APP.projects = projects || [];
+
+  const total = APP.projects.length;
+  const newOnes    = APP.projects.filter(p => p.status === 'new').length;
+  const inProgress = APP.projects.filter(p => p.status === 'in-progress').length;
+  const submitted  = APP.projects.filter(p => p.status === 'submitted').length;
+
+  document.getElementById('stat-total').textContent    = total;
+  document.getElementById('stat-new').textContent      = newOnes;
+  document.getElementById('stat-progress').textContent = inProgress;
+  document.getElementById('stat-overdue').textContent  = submitted;
+
+  await updateBadges();
+
+  // Chart
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const vals = days.map(() => Math.floor(Math.random() * 4) + 1);
+  const maxV = Math.max(...vals);
+  document.getElementById('adminChart').innerHTML = `<div class="bar-chart">${days.map((d,i) => `
+    <div class="bar-col">
+      <div class="bar" style="height:${Math.round((vals[i]/maxV)*70)}px; background:${i===6?'var(--accent3)':'var(--accent)'};" title="${vals[i]} projects"></div>
+      <div class="bar-label">${d}</div>
+    </div>`).join('')}</div>`;
+
+  // Team workload
+  const { data: employees } = await supabase.from('profiles').select('*').eq('role', 'staff');
+  APP.employees = employees || [];
+  const wEl = document.getElementById('adminWorkload');
+  wEl.innerHTML = (APP.employees.length === 0)
+    ? '<div class="text-dim" style="padding:12px">No staff members yet</div>'
+    : APP.employees.map(e => {
+        const active = APP.projects.filter(p => p.assigned_to === e.id && p.status === 'in-progress').length;
+        const done   = APP.projects.filter(p => p.assigned_to === e.id && p.status === 'delivered').length;
+        const wLabel = active === 0 ? 'low' : active <= 2 ? 'medium' : 'high';
+        const pct = Math.min(100, active * 33);
+        return `
+          <div style="margin-bottom:14px">
+            <div class="flex-between" style="margin-bottom:4px">
+              <span style="font-size:13px; font-weight:600">👤 ${e.full_name}</span>
+              <span class="workload-pill ${wLabel}">${active} active</span>
+            </div>
+            <div class="text-dim" style="font-size:11px; margin-bottom:4px">${e.job_role || 'Staff'} · ${done} delivered</div>
+            <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+          </div>`;
+      }).join('');
+
+  // Activity log
+  const { data: activities } = await supabase.from('activity_log').select('*').order('created_at', { ascending: false }).limit(5);
+  const logEl = document.getElementById('adminActivityLog');
+  logEl.innerHTML = (activities || []).map(a => `
+    <div class="activity-item">
+      <div class="activity-dot ${a.color}"></div>
+      <div style="flex:1">
+        <div style="font-size:13px">${a.text}</div>
+        <div class="notif-time">${formatTimeAgo(a.created_at)}</div>
+      </div>
+    </div>`).join('') || '<div class="text-dim" style="padding:12px">No recent activity</div>';
+
+  // New projects
+  const tbody = document.getElementById('adminNewProjectsTbody');
+  const newProjects = APP.projects.filter(p => p.status === 'new');
+  tbody.innerHTML = newProjects.length === 0
+    ? '<tr><td colspan="6"><div class="empty-state"><div class="icon">✅</div><p>No new projects — all caught up!</p></div></td></tr>'
+    : newProjects.map(p => `
+        <tr>
+          <td><span class="type-icon">${typeIcon(p.type)}</span> ${p.type}</td>
+          <td><strong>${p.client_name}</strong></td>
+          <td style="max-width:200px; color:var(--text-dim); font-size:13px">${(p.description||'').substring(0,60)}...</td>
+          <td>
+            <a href="${p.drive_link}" target="_blank" style="color:var(--accent); font-size:12px">📁 Drive</a>
+            ${p.other_link ? `<br><a href="${p.other_link}" target="_blank" style="color:var(--accent3); font-size:12px">🔗 Ref</a>` : ''}
+          </td>
+          <td><span class="status-pill new">New</span></td>
+          <td><button class="btn btn-primary btn-sm" onclick="openAssignModal('${p.id}')">🎯 Assign</button></td>
+        </tr>`).join('');
+
+  renderReminderAlerts();
+}
+
+function renderReminderAlerts() {
+  const container = document.getElementById('adminReminderAlerts');
+  const assigned = APP.projects.filter(p => p.status === 'in-progress');
+  if (assigned.length === 0) { container.innerHTML = '<div class="text-dim" style="padding:12px">No active reminders</div>'; return; }
+  container.innerHTML = assigned.map(p => {
+    const hrs = Math.floor((Date.now() - new Date(p.assigned_at || p.created_at).getTime()) / 3600000);
+    return `
+      <div class="reminder-item">
+        <div class="reminder-info">
+          <div class="reminder-name">${p.assigned_name || 'Staff'} — ${p.type} for ${p.client_name}</div>
+          <div class="reminder-detail">${(p.description||'').substring(0,60)}...</div>
+        </div>
+        <div style="text-align:right">
+          <div class="reminder-timer">${hrs}h elapsed</div>
+          <div class="text-sm" style="color:${hrs >= 6 ? 'var(--danger)' : 'var(--text-dim)'}; margin-top:4px">${hrs >= 6 ? '⚠️ Escalated to admin' : '📧 Being monitored'}</div>
+        </div>
+      </div>`; }).join('');
+}
+
+// =====================================================
+// ADMIN ALL PROJECTS
+// =====================================================
+async function renderAllProjects() {
+  const filter = document.getElementById('projectFilterStatus') ? document.getElementById('projectFilterStatus').value : '';
+  const search = document.getElementById('projectSearch') ? document.getElementById('projectSearch').value.toLowerCase() : '';
+
+  let query = supabase.from('projects').select('*').order('created_at', { ascending: false });
+  if (filter) query = query.eq('status', filter);
+
+  const { data: projects } = await query;
+  let filtered = projects || [];
+  if (search) filtered = filtered.filter(p =>
+    (p.client_name||'').toLowerCase().includes(search) ||
+    (p.type||'').toLowerCase().includes(search) ||
+    (p.assigned_name||'').toLowerCase().includes(search)
+  );
+
+  const tbody = document.getElementById('allProjectsTbody');
+  tbody.innerHTML = filtered.length === 0
+    ? '<tr><td colspan="7"><div class="empty-state"><div class="icon">🔍</div><p>No projects found</p></div></td></tr>'
+    : filtered.map(p => `
+        <tr>
+          <td>${typeIcon(p.type)} ${p.type}</td>
+          <td><strong>${p.client_name}</strong></td>
+          <td style="max-width:180px; font-size:13px; color:var(--text-dim)">${(p.description||'').substring(0,50)}...</td>
+          <td>${p.assigned_name ? `<strong>${p.assigned_name}</strong>` : '<span class="text-dim">Unassigned</span>'}</td>
+          <td><span class="status-pill ${p.status}">${statusLabel(p.status)}</span></td>
+          <td style="font-size:11px; color:var(--text-dim)">${formatDate(p.created_at)}</td>
+          <td class="actions-row">
+            <button class="btn btn-outline btn-xs" onclick="viewProjectDetail('${p.id}')">👁</button>
+            ${p.status === 'new' ? `<button class="btn btn-primary btn-xs" onclick="openAssignModal('${p.id}')">Assign</button>` : ''}
+            ${p.status === 'submitted' ? `<button class="btn btn-success btn-xs" onclick="openForwardModal('${p.id}')">Forward</button>` : ''}
+            ${p.status === 'submitted' ? `<button class="btn btn-warning btn-xs" onclick="openRevisionModal('${p.id}')">Revise</button>` : ''}
+            <button class="btn btn-danger btn-xs" onclick="deleteProject('${p.id}')">🗑</button>
+          </td>
+        </tr>`).join('');
+}
+
+async function viewProjectDetail(projectId) {
+  const { data: p } = await supabase.from('projects').select('*').eq('id', projectId).single();
+  if (!p) return;
+  document.getElementById('pdTitle').textContent = `${typeIcon(p.type)} ${p.type}`;
+  document.getElementById('pdBody').innerHTML = `
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px">
+      <div style="background:var(--surface2); padding:14px; border-radius:10px">
+        <div class="text-dim" style="margin-bottom:4px">Client</div>
+        <strong>${p.client_name}</strong>
+      </div>
+      <div style="background:var(--surface2); padding:14px; border-radius:10px">
+        <div class="text-dim" style="margin-bottom:4px">Status</div>
+        <span class="status-pill ${p.status}">${statusLabel(p.status)}</span>
+      </div>
+      <div style="background:var(--surface2); padding:14px; border-radius:10px">
+        <div class="text-dim" style="margin-bottom:4px">Assigned To</div>
+        <strong>${p.assigned_name || 'Not assigned'}</strong>
+      </div>
+      <div style="background:var(--surface2); padding:14px; border-radius:10px">
+        <div class="text-dim" style="margin-bottom:4px">Submitted</div>
+        <strong>${formatDate(p.created_at)}</strong>
+      </div>
+    </div>
+    <div style="background:var(--surface2); padding:16px; border-radius:10px; margin-bottom:12px">
+      <div class="text-dim" style="margin-bottom:6px">Description</div>
+      <div style="font-size:13px; line-height:1.6">${p.description}</div>
+    </div>
+    ${p.drive_link ? `<div style="margin-bottom:8px"><a href="${p.drive_link}" target="_blank" style="color:var(--accent)">📁 Original Materials Drive</a></div>` : ''}
+    ${p.other_link ? `<div style="margin-bottom:8px"><a href="${p.other_link}" target="_blank" style="color:var(--accent3)">🔗 Reference Link</a></div>` : ''}
+    ${p.submitted_drive ? `<div style="margin-bottom:8px"><a href="${p.submitted_drive}" target="_blank" style="color:var(--accent3)">📁 Completed Work Drive</a></div>` : ''}
+    ${p.submitted_desc ? `<div style="background:var(--surface2); padding:14px; border-radius:10px; margin-top:8px"><div class="text-dim" style="margin-bottom:6px">Staff Notes</div><div style="font-size:13px; line-height:1.6">${p.submitted_desc}</div></div>` : ''}`;
+  openModal('projectDetailModal');
+}
+
+async function deleteProject(projectId) {
+  showConfirmDelete('Delete this project permanently?', async () => {
+    await supabase.from('projects').delete().eq('id', projectId);
+    await logActivity('red', 'Project deleted');
+    closeModal('confirmDeleteModal');
+    showToast('info', '🗑 Deleted', 'Project removed');
+    await renderAllProjects();
+  });
+}
+
+// =====================================================
+// ASSIGN PAGE
+// =====================================================
+async function renderAssignPage() {
+  const { data: newProjects } = await supabase.from('projects').select('*').eq('status', 'new').order('created_at', { ascending: false });
+  const container = document.getElementById('assignProjectsList');
+  if (!newProjects || newProjects.length === 0) {
+    container.innerHTML = '<div class="card"><div class="empty-state"><div class="icon">🎉</div><p>All projects have been assigned!</p></div></div>'; return;
+  }
+  container.innerHTML = newProjects.map(p => `
+    <div class="card">
+      <div class="flex-between">
+        <div style="flex:1">
+          <div class="card-title">${typeIcon(p.type)} ${p.type} — <span style="color:var(--client-color)">${p.client_name}</span></div>
+          <div class="text-dim" style="margin-bottom:10px; max-width:500px">${p.description}</div>
+          <div class="actions-row">
+            <a href="${p.drive_link}" target="_blank" class="btn btn-outline btn-sm">📁 View Materials</a>
+            ${p.other_link ? `<a href="${p.other_link}" target="_blank" class="btn btn-outline btn-sm">🔗 Reference</a>` : ''}
+            <span class="text-dim" style="font-size:12px">Submitted ${formatDate(p.created_at)}</span>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openAssignModal('${p.id}')">🎯 Assign to Staff</button>
+      </div>
+    </div>`).join('');
+}
+
+async function openAssignModal(projectId) {
+  APP.selectedAssignProject = projectId;
+  const { data: project } = await supabase.from('projects').select('*').eq('id', projectId).single();
+  document.getElementById('assignProjectInfo').textContent = `${project.type} for ${project.client_name}`;
+  document.getElementById('assignNote').value = '';
+
+  const { data: employees } = await supabase.from('profiles').select('*').eq('role', 'staff');
+  APP.employees = employees || [];
+  const { data: allProjects } = await supabase.from('projects').select('assigned_to, status');
+
+  const grid = document.getElementById('staffSelectionGrid');
+  grid.innerHTML = APP.employees.map(emp => {
+    const active = (allProjects || []).filter(p => p.assigned_to === emp.id && p.status === 'in-progress').length;
+    const wLabel = active === 0 ? 'low' : active <= 2 ? 'medium' : 'high';
+    return `
+      <button class="staff-option" onclick="selectStaff('${emp.id}', this)">
+        <div class="staff-name">👤 ${emp.full_name}</div>
+        <div class="staff-role">${emp.job_role || 'Staff'}</div>
+        <div class="text-sm" style="margin-top:4px; display:flex; align-items:center; gap:6px">
+          <span class="workload-pill ${wLabel}">${active} active</span>
+        </div>
+      </button>`; }).join('');
+
+  APP.selectedStaff = null;
+  openModal('assignModal');
+}
+
+function selectStaff(staffId, el) {
+  document.querySelectorAll('.staff-option').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  APP.selectedStaff = staffId;
+}
+
+async function confirmAssign() {
+  if (!APP.selectedStaff) { showToast('warning', '⚠️ Select Staff', 'Please select a team member first'); return; }
+
+  const { data: project } = await supabase.from('projects').select('*').eq('id', APP.selectedAssignProject).single();
+  const { data: staff }   = await supabase.from('profiles').select('*').eq('id', APP.selectedStaff).single();
+
+  const { error } = await supabase.from('projects').update({
+    status: 'in-progress',
+    assigned_to: staff.id,
+    assigned_name: staff.full_name,
+    assigned_at: new Date().toISOString()
+  }).eq('id', APP.selectedAssignProject);
+
+  if (error) { showToast('error', '❌ Error', error.message); return; }
+
+  // Notify staff
+  await addNotification(staff.id, `New project assigned: ${project.type} for ${project.client_name}`, 'new');
+  await logActivity('orange', `${project.type} assigned to ${staff.full_name}`);
+
+  closeModal('assignModal');
+  emailStaffAssigned(staff, project);
+  showToast('success', '✅ Project Assigned!', `${project.type} assigned to ${staff.full_name}`);
+  setTimeout(() => showToast('info', '📧 Staff Notified', `Notification sent to ${staff.email}`), 1000);
+  await updateBadges();
+  await renderAdminDashboard();
+}
+
+// =====================================================
+// FORWARD PAGE
+// =====================================================
+async function renderForwardPage() {
+  const { data: submitted } = await supabase.from('projects').select('*').eq('status', 'submitted');
+  const container = document.getElementById('forwardProjectsList');
+  if (!submitted || submitted.length === 0) {
+    container.innerHTML = '<div class="card"><div class="empty-state"><div class="icon">📭</div><p>No submitted work to forward yet</p></div></div>'; return;
+  }
+  container.innerHTML = submitted.map(p => `
+    <div class="card">
+      <div class="flex-between">
+        <div style="flex:1">
+          <div class="card-title">${typeIcon(p.type)} ${p.type} — ${p.client_name}</div>
+          <div class="text-dim">Submitted by <strong style="color:var(--accent3)">${p.assigned_name}</strong></div>
+          <div class="text-dim" style="margin-top:6px">Notes: ${p.submitted_desc || '—'}</div>
+          ${p.submitted_drive ? `<a href="${p.submitted_drive}" target="_blank" style="color:var(--accent); font-size:13px; margin-top:6px; display:block">📁 View Completed Work</a>` : ''}
+        </div>
+        <div class="actions-row">
+          <button class="btn btn-success btn-sm" onclick="openForwardModal('${p.id}')">📤 Forward to Client</button>
+          <button class="btn btn-warning btn-sm" onclick="openRevisionModal('${p.id}')">↩ Request Revision</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function openForwardModal(projectId) {
+  APP.selectedForwardProject = projectId;
+  const { data: project } = await supabase.from('projects').select('*').eq('id', projectId).single();
+  const { data: client } = await supabase.from('profiles').select('*').eq('id', project.client_id).single();
+
+  document.getElementById('forwardProjectInfo').textContent = `Review before sending to ${project.client_name}`;
+  document.getElementById('forwardClientName').textContent = project.client_name;
+  document.getElementById('forwardClientEmail').textContent = client ? client.email : 'Email on file';
+
+  document.getElementById('forwardDetails').innerHTML = `
+    <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-dim); margin-bottom:12px; font-weight:600;">Project Summary</div>
+    <div class="flex-between" style="margin-bottom:10px"><span class="text-dim">Content Type</span><strong>${typeIcon(project.type)} ${project.type}</strong></div>
+    <div class="flex-between" style="margin-bottom:10px"><span class="text-dim">Completed by</span><strong style="color:var(--accent3)">${project.assigned_name || 'Staff'}</strong></div>
+    <div style="margin-bottom:10px">
+      <div class="text-dim" style="margin-bottom:5px">Staff Notes</div>
+      <div style="font-size:13px; background:var(--surface); padding:10px 14px; border-radius:8px; line-height:1.5;">${project.submitted_desc || '<span style="color:var(--text-dim)">No notes added</span>'}</div>
+    </div>
+    ${project.submitted_drive ? `<div><div class="text-dim" style="margin-bottom:5px">Completed Work</div><a href="${project.submitted_drive}" target="_blank" style="display:inline-flex; align-items:center; gap:6px; color:var(--accent); font-size:13px; background:rgba(108,99,255,0.1); padding:8px 12px; border-radius:8px; text-decoration:none;">📁 Open Completed Drive File</a></div>` : ''}`;
+
+  document.getElementById('forwardMessage').value = '';
+  openModal('forwardModal');
+}
+
+async function confirmForward() {
+  const { data: project } = await supabase.from('projects').select('*').eq('id', APP.selectedForwardProject).single();
+  const { data: client }  = await supabase.from('profiles').select('*').eq('id', project.client_id).single();
+  const adminMessage = document.getElementById('forwardMessage').value.trim();
+
+  await supabase.from('projects').update({ status: 'delivered' }).eq('id', APP.selectedForwardProject);
+  await addNotification(project.client_id, `Your ${project.type} project has been delivered! 🎉`, 'success');
+  await logActivity('green', `${project.type} delivered to ${project.client_name}`);
+
+  // Send message in thread
+  const convId = await getOrCreateConversation(project.client_id);
+  await supabase.from('messages').insert({
+    conversation_id: convId,
+    sender_id: APP.currentProfile.id,
+    text: `✅ Your ${project.type} project is ready! ${adminMessage || 'Please check your drive for the deliverables.'}`,
+    read: false
+  });
+
+  closeModal('forwardModal');
+  if (client) emailClientDelivery(client, project, adminMessage);
+  showToast('success', '🚀 Delivered!', `Project sent to ${project.client_name}`);
+  await updateBadges();
+  await renderForwardPage();
+}
+
+// =====================================================
+// REVISION
+// =====================================================
+function openRevisionModal(projectId) {
+  APP.revisionProjectId = projectId;
+  document.getElementById('revisionNote').value = '';
+  openModal('revisionModal');
+}
+
+async function confirmRevision() {
+  const note = document.getElementById('revisionNote').value.trim();
+  if (!note) { showToast('warning', '⚠️', 'Please describe what changes are needed'); return; }
+
+  const { data: project } = await supabase.from('projects').select('*').eq('id', APP.revisionProjectId).single();
+  await supabase.from('projects').update({
+    status: 'in-progress', submitted_drive: null, submitted_desc: null, revision_note: note
+  }).eq('id', APP.revisionProjectId);
+
+  await addNotification(project.assigned_to, `Revision requested for ${project.type}: ${note}`, 'urgent');
+  await logActivity('orange', `Revision requested for ${project.type} (${project.client_name})`);
+
+  closeModal('revisionModal');
+  showToast('warning', '↩ Revision Requested', `Sent back to ${project.assigned_name}`);
+  await updateBadges();
+  await renderForwardPage();
+}
+
+// =====================================================
+// REMINDERS PAGE
+// =====================================================
+async function renderRemindersPage() {
+  const { data: inProgress } = await supabase.from('projects').select('*').eq('status', 'in-progress');
+  const container = document.getElementById('remindersList');
+  if (!inProgress || inProgress.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>No active projects to remind</p></div>'; return;
+  }
+  container.innerHTML = inProgress.map(p => {
+    const hrs = Math.floor((Date.now() - new Date(p.assigned_at || p.created_at).getTime()) / 3600000);
+    return `
+      <div class="reminder-item">
+        <div class="reminder-info">
+          <div class="reminder-name">${typeIcon(p.type)} ${p.type} — ${p.client_name}</div>
+          <div class="reminder-detail">Assigned to: ${p.assigned_name || '—'}</div>
+          <div class="reminder-detail" style="margin-top:4px">📧 Every 3h → Staff reminder &nbsp;⏰ 6h+ → Admin escalation</div>
+        </div>
+        <div style="text-align:right">
+          <div class="reminder-timer">${hrs}h elapsed</div>
+          <div class="text-sm text-dim">Since assignment</div>
+          <span class="status-pill ${hrs >= 6 ? 'pending' : 'in-progress'}" style="margin-top:6px; display:inline-block">${hrs >= 6 ? '⚠️ Escalated' : '📧 Monitoring'}</span>
+        </div>
+      </div>`; }).join('');
+}
+
+// =====================================================
+// EMPLOYEES
+// =====================================================
+async function renderEmployees() {
+  const search = document.getElementById('empSearch') ? document.getElementById('empSearch').value.toLowerCase() : '';
+  let { data: emps } = await supabase.from('profiles').select('*').eq('role', 'staff');
+  if (search && emps) emps = emps.filter(e => (e.full_name||'').toLowerCase().includes(search) || (e.email||'').toLowerCase().includes(search) || (e.job_role||'').toLowerCase().includes(search));
+  APP.employees = emps || [];
+
+  const { data: allProjects } = await supabase.from('projects').select('assigned_to, status');
+
+  document.getElementById('employeesList').innerHTML = `
+    <table class="projects-table">
+      <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Active Projects</th><th>Joined</th><th>Actions</th></tr></thead>
+      <tbody>
+        ${APP.employees.length === 0 ? '<tr><td colspan="6"><div class="empty-state"><div class="icon">🔍</div><p>No employees found</p></div></td></tr>' :
+        APP.employees.map(emp => {
+          const active = (allProjects||[]).filter(p => p.assigned_to === emp.id && p.status === 'in-progress').length;
+          return `<tr>
+            <td><strong>👤 ${emp.full_name}</strong></td>
+            <td style="color:var(--text-dim)">${emp.email}</td>
+            <td><span class="status-pill in-progress">${emp.job_role || 'Staff'}</span></td>
+            <td>${active} active</td>
+            <td style="font-size:12px; color:var(--text-dim)">${formatDate(emp.created_at)}</td>
+            <td class="actions-row">
+              <button class="btn btn-outline btn-xs" onclick="editEmployee('${emp.id}')">✏️</button>
+              <button class="btn btn-danger btn-xs" onclick="removeEmployee('${emp.id}')">Remove</button>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+async function addEmployee() {
+  const name     = document.getElementById('emp-name').value.trim();
+  const email    = document.getElementById('emp-email').value.trim().toLowerCase();
+  const role     = document.getElementById('emp-role').value;
+  const password = document.getElementById('emp-password').value.trim();
+
+  if (!name || !email || !password) { showToast('warning', 'Fill all fields', 'Name, email and password are required'); return; }
+  if (password.length < 6) { showToast('warning', '⚠️ Too Short', 'Password must be at least 6 characters'); return; }
+
+  // Create auth user via Supabase Auth (admin service role would be needed for this)
+  // Instead: create via sign-up then update profile
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) { showToast('error', '❌ Error', error.message); return; }
+
+  // Update the profile
+  const userId = data.user ? data.user.id : null;
+  if (!userId) { showToast('error', '❌ Error', 'Could not create user'); return; }
+
+  await supabase.from('profiles').upsert({
+    id: userId, email, full_name: name, role: 'staff', job_role: role
+  });
+
+  closeModal('addEmployeeModal');
+  ['emp-name','emp-email','emp-password'].forEach(id => document.getElementById(id).value = '');
+  showToast('success', '✅ Employee Added', `${name} added as ${role} — they must confirm their email`);
+  await logActivity('purple', `New employee added: ${name}`);
+  await renderEmployees();
+}
+
+async function editEmployee(id) {
+  const emp = APP.employees.find(e => e.id === id);
+  if (!emp) return;
+  document.getElementById('edit-emp-id').value = id;
+  document.getElementById('edit-emp-name').value = emp.full_name;
+  document.getElementById('edit-emp-role').value = emp.job_role || 'Video Editor';
+  openModal('editEmployeeModal');
+}
+
+async function saveEditEmployee() {
+  const id   = document.getElementById('edit-emp-id').value;
+  const name = document.getElementById('edit-emp-name').value.trim();
+  const role = document.getElementById('edit-emp-role').value;
+  if (!name) { showToast('warning', '⚠️', 'Name is required'); return; }
+  await supabase.from('profiles').update({ full_name: name, job_role: role }).eq('id', id);
+  closeModal('editEmployeeModal');
+  showToast('success', '✅ Updated', 'Employee information saved');
+  await renderEmployees();
+}
+
+async function removeEmployee(id) {
+  const emp = APP.employees.find(e => e.id === id);
+  showConfirmDelete(`Remove ${emp ? emp.full_name : 'this employee'}?`, async () => {
+    // Soft delete — just update their role to 'inactive'
+    await supabase.from('profiles').update({ role: 'inactive' }).eq('id', id);
+    showToast('info', 'Removed', 'Employee deactivated');
+    closeModal('confirmDeleteModal');
+    await renderEmployees();
+  });
+}
+
+// =====================================================
+// CLIENTS LIST
+// =====================================================
+async function renderClientsList() {
+  const search = document.getElementById('clientSearch') ? document.getElementById('clientSearch').value.toLowerCase() : '';
+  let { data: clients } = await supabase.from('profiles').select('*').eq('role', 'client');
+  if (search && clients) clients = clients.filter(c => (c.full_name||'').toLowerCase().includes(search) || (c.email||'').toLowerCase().includes(search));
+  APP.clients = clients || [];
+
+  const { data: allProjects } = await supabase.from('projects').select('client_id');
+
+  document.getElementById('clientsList').innerHTML = `
+    <table class="projects-table">
+      <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Projects</th><th>Joined</th><th>Action</th></tr></thead>
+      <tbody>
+        ${APP.clients.length === 0 ? '<tr><td colspan="6"><div class="empty-state"><div class="icon">🔍</div><p>No clients found</p></div></td></tr>' :
+        APP.clients.map(cl => {
+          const projCount = (allProjects||[]).filter(p => p.client_id === cl.id).length;
+          return `<tr>
+            <td><strong>💼 ${cl.full_name}</strong></td>
+            <td style="color:var(--text-dim)">${cl.email}</td>
+            <td style="color:var(--text-dim)">${cl.phone || '—'}</td>
+            <td>${projCount}</td>
+            <td style="font-size:12px; color:var(--text-dim)">${formatDate(cl.created_at)}</td>
+            <td class="actions-row">
+              <button class="btn btn-outline btn-xs" onclick="adminMsgClient('${cl.id}')">💬</button>
+              <button class="btn btn-danger btn-xs" onclick="removeClient('${cl.id}')">Remove</button>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+async function addClient() {
+  const name     = document.getElementById('cl-name').value.trim();
+  const email    = document.getElementById('cl-email').value.trim().toLowerCase();
+  const phone    = document.getElementById('cl-phone').value.trim();
+  const password = document.getElementById('cl-password').value.trim();
+
+  if (!name || !email || !password) { showToast('warning', 'Fill all fields', 'Name, email and password are required'); return; }
+  if (password.length < 6) { showToast('warning', '⚠️ Too Short', 'Password must be at least 6 characters'); return; }
+
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) { showToast('error', '❌ Error', error.message); return; }
+
+  const userId = data.user ? data.user.id : null;
+  if (!userId) { showToast('error', '❌ Error', 'Could not create user'); return; }
+
+  await supabase.from('profiles').upsert({ id: userId, email, full_name: name, role: 'client', phone });
+
+  // Welcome message
+  const convId = await getOrCreateConversation(userId);
+  await supabase.from('messages').insert({
+    conversation_id: convId,
+    sender_id: APP.currentProfile.id,
+    text: `Welcome to WebProCreation, ${name}! How can we help you today?`,
+    read: false
+  });
+
+  closeModal('addClientModal');
+  ['cl-name','cl-email','cl-phone','cl-password'].forEach(id => document.getElementById(id).value = '');
+  showToast('success', '✅ Client Added', `${name} added — they must confirm their email`);
+  await logActivity('purple', `New client added: ${name}`);
+  await renderClientsList();
+}
+
+async function removeClient(id) {
+  const cl = APP.clients.find(c => c.id === id);
+  showConfirmDelete(`Remove ${cl ? cl.full_name : 'this client'}?`, async () => {
+    await supabase.from('profiles').update({ role: 'inactive' }).eq('id', id);
+    showToast('info', 'Removed', 'Client deactivated');
+    closeModal('confirmDeleteModal');
+    await renderClientsList();
+  });
+}
+
+// =====================================================
+// MESSAGES / CONVERSATIONS
+// =====================================================
+async function getOrCreateConversation(clientId) {
+  // Each client has one conversation with admin
+  const { data: existing } = await supabase.from('conversations')
+    .select('id').eq('client_id', clientId).single();
+  if (existing) return existing.id;
+
+  const { data: newConv } = await supabase.from('conversations')
+    .insert({ client_id: clientId }).select('id').single();
+  return newConv ? newConv.id : null;
+}
+
+async function renderAdminMessages() {
+  const { data: clients } = await supabase.from('profiles').select('*').eq('role', 'client');
+  APP.clients = clients || [];
+
+  const convList = document.getElementById('adminConvList');
+  convList.innerHTML = APP.clients.map(cl => `
+    <div onclick="openAdminConv('${cl.id}')" style="padding:12px; border-radius:10px; cursor:pointer; border:1px solid var(--border); margin-bottom:8px; transition:all 0.15s; ${APP.adminCurrentConv === cl.id ? 'border-color:var(--accent); background:rgba(108,99,255,0.08)' : ''}">
+      <div style="font-weight:600; font-size:13px">💼 ${cl.full_name}</div>
+      <div class="text-dim" style="font-size:11px; margin-top:3px">${cl.email}</div>
+    </div>`).join('') || '<div class="text-dim" style="padding:12px">No clients yet</div>';
+
+  if (APP.adminCurrentConv) await openAdminConv(APP.adminCurrentConv);
+}
+
+async function openAdminConv(clientId) {
+  APP.adminCurrentConv = clientId;
+  const { data: client } = await supabase.from('profiles').select('*').eq('id', clientId).single();
+  document.getElementById('adminMsgTitle').textContent = client ? `💼 ${client.full_name}` : 'Conversation';
+  document.getElementById('adminMsgSub').textContent = client ? client.email : '';
+
+  const convId = await getOrCreateConversation(clientId);
+  if (!convId) return;
+
+  // Mark messages as read
+  await supabase.from('messages').update({ read: true })
+    .eq('conversation_id', convId).neq('sender_id', APP.currentProfile.id);
+
+  await updateBadges();
+
+  const { data: msgs } = await supabase.from('messages').select('*')
+    .eq('conversation_id', convId).order('created_at', { ascending: true });
+
+  const thread = document.getElementById('adminMsgThread');
+  thread.innerHTML = (msgs||[]).map(m => `
+    <div class="message-bubble ${m.sender_id === APP.currentProfile.id ? 'sent' : 'received'}">
+      ${m.text}
+      <div class="message-meta">${m.sender_id === APP.currentProfile.id ? 'You' : (client ? client.full_name : 'Client')} · ${formatTimeAgo(m.created_at)}</div>
+    </div>`).join('') || '<div class="text-dim" style="text-align:center; padding:20px">No messages yet</div>';
+  thread.scrollTop = thread.scrollHeight;
+
+  await renderAdminMessages();
+}
+
+async function adminSendMsg() {
+  const text = document.getElementById('adminMsgText').value.trim();
+  if (!text || !APP.adminCurrentConv) return;
+
+  const convId = await getOrCreateConversation(APP.adminCurrentConv);
+  await supabase.from('messages').insert({
+    conversation_id: convId,
+    sender_id: APP.currentProfile.id,
+    text, read: false
+  });
+  document.getElementById('adminMsgText').value = '';
+  await openAdminConv(APP.adminCurrentConv);
+}
+
+async function adminMsgClient(clientId) {
+  APP.adminCurrentConv = clientId;
+  showPage('admin-messages');
+}
+
+// =====================================================
+// ADMIN SETTINGS
+// =====================================================
+async function renderAdminSettings() {
+  const profile = APP.currentProfile;
+  document.getElementById('settings-admin-email').value = profile.email;
+  document.getElementById('settings-admin-name').value = APP.agencySettings.adminName || profile.full_name;
+  document.getElementById('settings-agency-name').value = APP.agencySettings.agencyName || 'WebProCreation';
+
+  const { data: allProjs } = await supabase.from('projects').select('status');
+  const { data: emps } = await supabase.from('profiles').select('id').eq('role', 'staff');
+  const { data: cls } = await supabase.from('profiles').select('id').eq('role', 'client');
+  const total = (allProjs||[]).length;
+  const delivered = (allProjs||[]).filter(p => p.status === 'delivered').length;
+
+  document.getElementById('adminPlatformStats').innerHTML = `
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px">
+      <div style="background:var(--surface2); padding:16px; border-radius:10px; text-align:center">
+        <div style="font-family:'Syne',sans-serif; font-size:24px; font-weight:800; color:var(--accent)">${(emps||[]).length}</div>
+        <div class="text-dim" style="font-size:11px">Team Members</div>
+      </div>
+      <div style="background:var(--surface2); padding:16px; border-radius:10px; text-align:center">
+        <div style="font-family:'Syne',sans-serif; font-size:24px; font-weight:800; color:var(--client-color)">${(cls||[]).length}</div>
+        <div class="text-dim" style="font-size:11px">Clients</div>
+      </div>
+      <div style="background:var(--surface2); padding:16px; border-radius:10px; text-align:center">
+        <div style="font-family:'Syne',sans-serif; font-size:24px; font-weight:800; color:var(--accent3)">${delivered}</div>
+        <div class="text-dim" style="font-size:11px">Delivered</div>
+      </div>
+      <div style="background:var(--surface2); padding:16px; border-radius:10px; text-align:center">
+        <div style="font-family:'Syne',sans-serif; font-size:24px; font-weight:800; color:var(--text)">${total > 0 ? Math.round((delivered/total)*100) : 0}%</div>
+        <div class="text-dim" style="font-size:11px">Success Rate</div>
+      </div>
+    </div>`;
+}
+
+async function saveAgencySettings() {
+  APP.agencySettings.agencyName = document.getElementById('settings-agency-name').value.trim() || 'WebProCreation';
+  APP.agencySettings.adminName  = document.getElementById('settings-admin-name').value.trim() || 'Admin';
+  document.getElementById('userBadge').textContent = `👑 ${APP.agencySettings.adminName}`;
+  await supabase.from('settings').upsert({ key: 'agency_settings', value: JSON.stringify(APP.agencySettings) }, { onConflict: 'key' });
+  showToast('success', '✅ Saved', 'Agency settings updated');
+}
+
+async function exportData() {
+  const { data: projects } = await supabase.from('projects').select('*');
+  const { data: profiles } = await supabase.from('profiles').select('id, email, full_name, role, job_role, phone, created_at');
+  const data = { exported: new Date().toISOString(), projects: projects||[], profiles: profiles||[] };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `webprocreation-export-${Date.now()}.json`; a.click();
+  URL.revokeObjectURL(url);
+  showToast('success', '📥 Exported', 'Data exported as JSON file');
+}
+
+async function changeAdminPassword() {
+  const newPass = document.getElementById('settings-new-pass').value;
+  const confirm = document.getElementById('settings-confirm-pass').value;
+  if (!newPass || !confirm) { showToast('warning', '⚠️', 'Both password fields required'); return; }
+  if (newPass.length < 6) { showToast('warning', '⚠️', 'Minimum 6 characters'); return; }
+  if (newPass !== confirm) { showToast('error', '❌ Mismatch', 'Passwords do not match'); return; }
+  const { error } = await supabase.auth.updateUser({ password: newPass });
+  if (error) { showToast('error', '❌ Error', error.message); return; }
+  ['settings-new-pass','settings-confirm-pass'].forEach(id => document.getElementById(id).value = '');
+  showToast('success', '✅ Password Updated', 'Password changed successfully');
+}
+
+// =====================================================
+// STAFF DASHBOARD
+// =====================================================
+async function renderStaffDashboard() {
+  const userId = APP.currentProfile.id;
+  const { data: myProjects } = await supabase.from('projects').select('*').eq('assigned_to', userId).order('created_at', { ascending: false });
+  APP.projects = myProjects || [];
+
+  const pending = APP.projects.filter(p => p.status === 'in-progress').length;
+  const done    = APP.projects.filter(p => ['submitted','delivered'].includes(p.status)).length;
+
+  document.getElementById('staff-stat-assigned').textContent = APP.projects.length;
+  document.getElementById('staff-stat-pending').textContent  = pending;
+  document.getElementById('staff-stat-done').textContent     = done;
+
+  const active = APP.projects.filter(p => p.status === 'in-progress');
+  const tbody  = document.getElementById('staffProjectsTbody');
+  tbody.innerHTML = active.length === 0
+    ? '<tr><td colspan="7"><div class="empty-state"><div class="icon">🌟</div><p>No active projects right now!</p></div></td></tr>'
+    : active.map(p => {
+        const hrs = p.assigned_at ? Math.floor((Date.now() - new Date(p.assigned_at).getTime()) / 3600000) : 0;
+        return `<tr>
+          <td>${typeIcon(p.type)} ${p.type}</td>
+          <td>${p.client_name}</td>
+          <td style="max-width:180px; font-size:13px; color:var(--text-dim)">${(p.description||'').substring(0,60)}...</td>
+          <td><a href="${p.drive_link}" target="_blank" style="color:var(--accent); font-size:12px">📁 Open</a></td>
+          <td style="font-size:12px; color:${hrs >= 6 ? 'var(--danger)' : 'var(--text-dim)'};">${hrs}h ago</td>
+          <td><span class="status-pill in-progress">In Progress</span></td>
+          <td><button class="btn btn-success btn-sm" onclick="openStaffSubmitModal('${p.id}')">📤 Submit</button></td>
+        </tr>`;
+      }).join('');
+
+  await renderStaffNotifications();
+}
+
+async function renderStaffNotifications() {
+  const { data: notifs } = await supabase.from('notifications').select('*')
+    .eq('user_id', APP.currentProfile.id).order('created_at', { ascending: false }).limit(5);
+  const el = document.getElementById('staffNotifList');
+  el.innerHTML = !notifs || notifs.length === 0
+    ? '<div class="text-dim" style="padding:12px">No notifications yet</div>'
+    : '<div class="notif-list">' + notifs.map(n => `
+        <div class="notif-item ${n.type || 'new'}">
+          <div class="notif-icon">${n.type === 'success' ? '✅' : n.type === 'urgent' ? '⚠️' : '🔔'}</div>
+          <div>
+            <div class="notif-text">${n.text}</div>
+            <div class="notif-time">${formatTimeAgo(n.created_at)}</div>
+          </div>
+        </div>`).join('') + '</div>';
+}
+
+function filterStaffProjects(filter, btn) {
+  APP.staffProjectFilter = filter;
+  document.querySelectorAll('#staffProjectFilter .filter-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderStaffProjects();
+}
+
+async function renderStaffProjects() {
+  const userId = APP.currentProfile.id;
+  let q = supabase.from('projects').select('*').eq('assigned_to', userId).order('created_at', { ascending: false });
+  if (APP.staffProjectFilter && APP.staffProjectFilter !== 'all') q = q.eq('status', APP.staffProjectFilter);
+  const { data: myProjects } = await q;
+  const tbody = document.getElementById('staffAllProjectsTbody');
+  tbody.innerHTML = !myProjects || myProjects.length === 0
+    ? '<tr><td colspan="6"><div class="empty-state"><div class="icon">📭</div><p>No projects in this category</p></div></td></tr>'
+    : myProjects.map(p => `
+        <tr>
+          <td>${typeIcon(p.type)} ${p.type}</td>
+          <td>${p.client_name}</td>
+          <td style="font-size:13px; color:var(--text-dim); max-width:200px">${(p.description||'').substring(0,60)}...</td>
+          <td><a href="${p.drive_link}" target="_blank" style="color:var(--accent); font-size:12px">📁 Open</a></td>
+          <td><span class="status-pill ${p.status}">${statusLabel(p.status)}</span></td>
+          <td>${p.status === 'in-progress' ? `<button class="btn btn-success btn-sm" onclick="openStaffSubmitModal('${p.id}')">Submit</button>` : '—'}</td>
+        </tr>`).join('');
+}
+
+async function renderStaffSubmitPage() {
+  const { data: pending } = await supabase.from('projects').select('*')
+    .eq('assigned_to', APP.currentProfile.id).eq('status', 'in-progress');
+  const container = document.getElementById('staffSubmitList');
+  if (!pending || pending.length === 0) {
+    container.innerHTML = '<div class="card"><div class="empty-state"><div class="icon">✅</div><p>No pending work to submit — great job!</p></div></div>'; return;
+  }
+  container.innerHTML = pending.map(p => `
+    <div class="card">
+      <div class="flex-between">
+        <div>
+          <div class="card-title">${typeIcon(p.type)} ${p.type} — <span style="color:var(--client-color)">${p.client_name}</span></div>
+          <div class="text-dim">${p.description}</div>
+          <div class="actions-row" style="margin-top:8px">
+            <a href="${p.drive_link}" target="_blank" style="color:var(--accent); font-size:13px">📁 Original Materials</a>
+            ${p.revision_note ? `<span style="color:var(--warning); font-size:12px">⚠️ Revision: ${p.revision_note}</span>` : ''}
+          </div>
+        </div>
+        <button class="btn btn-success btn-sm" onclick="openStaffSubmitModal('${p.id}')">📤 Submit Work</button>
+      </div>
+    </div>`).join('');
+}
+
+async function openStaffSubmitModal(projectId) {
+  const { data: project } = await supabase.from('projects').select('*').eq('id', projectId).single();
+  APP.staffSubmitProjectId = projectId;
+  document.getElementById('staffSubmitProjectInfo').textContent = `${project.type} for ${project.client_name}`;
+  document.getElementById('submit-client-name').value = project.client_name;
+  document.getElementById('submit-drive-link').value = '';
+  document.getElementById('submit-description').value = '';
+  openModal('staffSubmitModal');
+}
+
+async function confirmStaffSubmit() {
+  const driveLink = document.getElementById('submit-drive-link').value.trim();
+  const desc      = document.getElementById('submit-description').value.trim();
+  if (!driveLink || !desc) { showToast('warning', '⚠️ Fill All Fields', 'Drive link and description are required'); return; }
+
+  const { data: project } = await supabase.from('projects').select('*').eq('id', APP.staffSubmitProjectId).single();
+
+  await supabase.from('projects').update({
+    status: 'submitted', submitted_drive: driveLink, submitted_desc: desc, revision_note: null
+  }).eq('id', APP.staffSubmitProjectId);
+
+  // Find admin
+  const { data: admin } = await supabase.from('profiles').select('id').eq('role', 'admin').single();
+  if (admin) await addNotification(admin.id, `${APP.currentProfile.full_name} submitted ${project.type} for ${project.client_name}`, 'new');
+  await logActivity('orange', `${APP.currentProfile.full_name} submitted ${project.type} for review`);
+
+  closeModal('staffSubmitModal');
+  showToast('success', '✅ Work Submitted!', 'Sent to admin for review');
+  await updateBadges();
+  await renderStaffDashboard();
+}
+
+// =====================================================
+// STAFF PROFILE
+// =====================================================
+function renderStaffProfile() {
+  const profile = APP.currentProfile;
+  document.getElementById('staffProfileName').textContent  = profile.full_name;
+  document.getElementById('staffProfileRole').textContent  = profile.job_role || 'Staff';
+  document.getElementById('staffProfileEmail').textContent = profile.email;
+  document.getElementById('staffAvatarLetter').textContent = (profile.full_name||'A').charAt(0).toUpperCase();
+  document.getElementById('staff-profile-name').value = profile.full_name;
+}
+
+async function saveStaffProfile() {
+  const name = document.getElementById('staff-profile-name').value.trim();
+  if (!name) { showToast('warning', '⚠️', 'Name cannot be empty'); return; }
+  await supabase.from('profiles').update({ full_name: name }).eq('id', APP.currentProfile.id);
+  APP.currentProfile.full_name = name;
+  document.getElementById('userBadge').textContent = `🎨 ${name}`;
+  showToast('success', '✅ Saved', 'Profile updated');
+  renderStaffProfile();
+}
+
+async function changeStaffPassword() {
+  const newPass = document.getElementById('staff-new-pass').value;
+  const confirm = document.getElementById('staff-confirm-pass').value;
+  if (!newPass || !confirm) { showToast('warning', '⚠️', 'Both fields required'); return; }
+  if (newPass.length < 6) { showToast('warning', '⚠️', 'Min 6 characters'); return; }
+  if (newPass !== confirm) { showToast('error', '❌ Mismatch', 'Passwords do not match'); return; }
+  const { error } = await supabase.auth.updateUser({ password: newPass });
+  if (error) { showToast('error', '❌ Error', error.message); return; }
+  ['staff-new-pass','staff-confirm-pass'].forEach(id => document.getElementById(id).value = '');
+  showToast('success', '✅ Password Updated', 'Your password has been changed');
+}
+
+// =====================================================
+// CLIENT DASHBOARD
+// =====================================================
+async function renderClientDashboard() {
+  const userId = APP.currentProfile.id;
+  const { data: myProjects } = await supabase.from('projects').select('*').eq('client_id', userId).order('created_at', { ascending: false });
+  APP.projects = myProjects || [];
+
+  const active = APP.projects.filter(p => ['new','in-progress','submitted'].includes(p.status)).length;
+  const done   = APP.projects.filter(p => p.status === 'delivered').length;
+
+  document.getElementById('client-stat-total').textContent = APP.projects.length;
+  document.getElementById('client-stat-active').textContent = active;
+  document.getElementById('client-stat-done').textContent  = done;
+
+  const tbody  = document.getElementById('clientProjectsTbody');
+  const recent = APP.projects.slice(0, 5);
+  tbody.innerHTML = recent.length === 0
+    ? '<tr><td colspan="4"><div class="empty-state"><div class="icon">📭</div><p>No projects yet. Submit your first project!</p></div></td></tr>'
+    : recent.map(p => `
+        <tr>
+          <td>${typeIcon(p.type)} ${p.type}</td>
+          <td style="font-size:13px; color:var(--text-dim)">${(p.description||'').substring(0,60)}...</td>
+          <td><span class="status-pill ${p.status}">${statusLabel(p.status)}</span></td>
+          <td>${p.status === 'delivered' && p.submitted_drive ? `<a href="${p.submitted_drive}" target="_blank" style="color:var(--accent3); font-size:13px">📁 Download</a>` : '—'}</td>
+        </tr>`).join('');
+
+  // Notifications
+  const { data: notifs } = await supabase.from('notifications').select('*')
+    .eq('user_id', userId).order('created_at', { ascending: false }).limit(5);
+  const notifList = document.getElementById('clientNotifList');
+  notifList.innerHTML = !notifs || notifs.length === 0
+    ? '<div class="text-dim" style="padding:12px">No notifications yet</div>'
+    : '<div class="notif-list">' + notifs.map(n => `
+        <div class="notif-item ${n.type || 'new'}">
+          <div class="notif-icon">${n.type === 'success' ? '✅' : '🔔'}</div>
+          <div>
+            <div class="notif-text">${n.text}</div>
+            <div class="notif-time">${formatTimeAgo(n.created_at)}</div>
+          </div>
+        </div>`).join('') + '</div>';
+}
+
+function filterClientProjects(filter, btn) {
+  APP.clientProjectFilter = filter;
+  document.querySelectorAll('#clientProjectFilter .filter-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderClientProjects();
+}
+
+async function renderClientProjects() {
+  const userId = APP.currentProfile.id;
+  let q = supabase.from('projects').select('*').eq('client_id', userId).order('created_at', { ascending: false });
+  if (APP.clientProjectFilter && APP.clientProjectFilter !== 'all') q = q.eq('status', APP.clientProjectFilter);
+  const { data: myProjects } = await q;
+  const tbody = document.getElementById('clientAllProjectsTbody');
+  tbody.innerHTML = !myProjects || myProjects.length === 0
+    ? '<tr><td colspan="6"><div class="empty-state"><div class="icon">📭</div><p>No projects in this category</p></div></td></tr>'
+    : myProjects.map(p => `
+        <tr>
+          <td>${typeIcon(p.type)} ${p.type}</td>
+          <td style="font-size:13px; color:var(--text-dim)">${(p.description||'').substring(0,60)}...</td>
+          <td><a href="${p.drive_link}" target="_blank" style="color:var(--accent); font-size:12px">📁 Open</a></td>
+          <td style="font-size:12px; color:var(--text-dim)">${p.deadline || '—'}</td>
+          <td><span class="status-pill ${p.status}">${statusLabel(p.status)}</span></td>
+          <td>${p.status === 'delivered' && p.submitted_drive ? `<a href="${p.submitted_drive}" target="_blank" style="color:var(--accent3); font-size:13px">📁 Download</a>` : '—'}</td>
+        </tr>`).join('');
+}
+
+// =====================================================
+// CLIENT SUBMIT PROJECT
+// =====================================================
+function resetClientForm() {
+  goStep(1);
+  APP.selectedProjectType = null;
+  document.querySelectorAll('.type-option').forEach(b => b.classList.remove('selected'));
+  document.getElementById('client-drive-link').value = '';
+  document.getElementById('client-description').value = '';
+  document.getElementById('client-deadline').value = '';
+  const ol = document.getElementById('client-other-link'); if (ol) ol.value = '';
+  const og = document.getElementById('other-link-group'); if (og) og.style.display = 'none';
+}
+
+function selectType(type) {
+  APP.selectedProjectType = type;
+  document.querySelectorAll('.type-option').forEach(b => b.classList.remove('selected'));
+  event.target.closest('.type-option').classList.add('selected');
+  const otherGroup = document.getElementById('other-link-group');
+  if (otherGroup) otherGroup.style.display = type === 'Other' ? 'block' : 'none';
+  setTimeout(() => goStep(2), 400);
+}
+
+function goStep(step) {
+  document.getElementById('clientStep1').style.display = step === 1 ? 'block' : 'none';
+  document.getElementById('clientStep2').style.display = step === 2 ? 'block' : 'none';
+  document.getElementById('clientStep3').style.display = step === 3 ? 'block' : 'none';
+
+  ['step1','step2','step3'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.className = 'step';
+    if (i + 1 < step) el.classList.add('done');
+    if (i + 1 === step) el.classList.add('active');
+  });
+
+  if (step === 2) document.getElementById('client-type-display').value = APP.selectedProjectType || '';
+
+  if (step === 3) {
+    const driveLink = document.getElementById('client-drive-link').value;
+    const desc = document.getElementById('client-description').value;
+    if (!driveLink || !desc) { showToast('warning', '⚠️ Fill Details', 'Please fill in Drive link and description'); goStep(2); return; }
+    const otherLink = document.getElementById('client-other-link') ? document.getElementById('client-other-link').value.trim() : '';
+    const deadline  = document.getElementById('client-deadline').value;
+    document.getElementById('clientConfirmDetails').innerHTML = `
+      <div class="flex-between" style="margin-bottom:12px"><span class="text-dim">Project Type</span><strong>${typeIcon(APP.selectedProjectType)} ${APP.selectedProjectType}</strong></div>
+      <div class="flex-between" style="margin-bottom:12px"><span class="text-dim">Drive Link</span><a href="${driveLink}" target="_blank" style="color:var(--accent); font-size:13px">📁 View</a></div>
+      ${deadline ? `<div class="flex-between" style="margin-bottom:12px"><span class="text-dim">Deadline</span><strong>${deadline}</strong></div>` : ''}
+      ${otherLink ? `<div class="flex-between" style="margin-bottom:12px"><span class="text-dim">Reference Link</span><a href="${otherLink}" target="_blank" style="color:var(--accent3); font-size:13px">🔗 View</a></div>` : ''}
+      <div style="margin-top:10px"><span class="text-dim">Description</span><div style="margin-top:6px; font-size:13px; line-height:1.6">${desc}</div></div>`;
+  }
+}
+
+async function submitClientProject() {
+  const driveLink = document.getElementById('client-drive-link').value.trim();
+  const desc      = document.getElementById('client-description').value.trim();
+  const userId    = APP.currentProfile.id;
+  const otherLink = document.getElementById('client-other-link') ? document.getElementById('client-other-link').value.trim() : '';
+  const deadline  = document.getElementById('client-deadline').value;
+
+  const btn = document.getElementById('submitProjectBtn');
+  btn.disabled = true; btn.textContent = '⏳ Submitting...';
+
+  const { data: newProject, error } = await supabase.from('projects').insert({
+    type: APP.selectedProjectType,
+    client_id: userId,
+    client_name: APP.currentProfile.full_name,
+    drive_link: driveLink,
+    other_link: otherLink || null,
+    description: desc,
+    status: 'new',
+    deadline: deadline || null
+  }).select().single();
+
+  btn.disabled = false; btn.textContent = '🚀 Submit Project';
+
+  if (error) { showToast('error', '❌ Error', error.message); return; }
+
+  // Notify admin
+  const { data: admin } = await supabase.from('profiles').select('id').eq('role', 'admin').single();
+  if (admin) await addNotification(admin.id, `New ${newProject.type} project submitted by ${APP.currentProfile.full_name}`, 'new');
+  await logActivity('purple', `${APP.currentProfile.full_name} submitted a new ${newProject.type} project`);
+
+  // Email confirmation
+  const { data: clientProfile } = await supabase.from('profiles').select('*').eq('id', userId).single();
+  if (clientProfile) emailClientConfirm(clientProfile, newProject);
+
+  showToast('success', '🚀 Project Submitted!', 'Your project has been received');
+  await updateBadges();
+  setTimeout(() => showPage('client-dashboard'), 1500);
+}
+
+// =====================================================
+// CLIENT MESSAGES
+// =====================================================
+async function renderClientMessages() {
+  const userId = APP.currentProfile.id;
+  const convId = await getOrCreateConversation(userId);
+  if (!convId) return;
+
+  // Mark as read
+  await supabase.from('messages').update({ read: true })
+    .eq('conversation_id', convId).neq('sender_id', userId);
+  await updateBadges();
+
+  const { data: msgs } = await supabase.from('messages').select('*')
+    .eq('conversation_id', convId).order('created_at', { ascending: true });
+
+  const thread = document.getElementById('clientMsgThread');
+  thread.innerHTML = (msgs||[]).map(m => `
+    <div class="message-bubble ${m.sender_id === userId ? 'sent' : 'received'}">
+      ${m.text}
+      <div class="message-meta">${m.sender_id === userId ? APP.currentProfile.full_name : 'WebProCreation Team'} · ${formatTimeAgo(m.created_at)}</div>
+    </div>`).join('') || '<div class="text-dim" style="text-align:center; padding:40px">Start a conversation with your account manager</div>';
+  thread.scrollTop = thread.scrollHeight;
+}
+
+async function clientSendMsg() {
+  const text   = document.getElementById('clientMsgText').value.trim();
+  if (!text) return;
+  const userId = APP.currentProfile.id;
+  const convId = await getOrCreateConversation(userId);
+
+  await supabase.from('messages').insert({
+    conversation_id: convId,
+    sender_id: userId,
+    text, read: false
+  });
+
+  document.getElementById('clientMsgText').value = '';
+  const { data: admin } = await supabase.from('profiles').select('id').eq('role', 'admin').single();
+  if (admin) await addNotification(admin.id, `New message from ${APP.currentProfile.full_name}: "${text.substring(0,40)}..."`, 'new');
+  await updateBadges();
+  await renderClientMessages();
+}
+
+// =====================================================
+// CLIENT PROFILE
+// =====================================================
+function renderClientProfile() {
+  const profile = APP.currentProfile;
+  document.getElementById('clientProfileName').textContent  = profile.full_name;
+  document.getElementById('clientProfileEmail').textContent = profile.email;
+  document.getElementById('clientAvatarLetter').textContent = (profile.full_name||'C').charAt(0).toUpperCase();
+  document.getElementById('client-profile-name').value  = profile.full_name;
+  document.getElementById('client-profile-phone').value = profile.phone || '';
+}
+
+async function saveClientProfile() {
+  const name  = document.getElementById('client-profile-name').value.trim();
+  const phone = document.getElementById('client-profile-phone').value.trim();
+  if (!name) { showToast('warning', '⚠️', 'Name cannot be empty'); return; }
+  await supabase.from('profiles').update({ full_name: name, phone }).eq('id', APP.currentProfile.id);
+  APP.currentProfile.full_name = name;
+  APP.currentProfile.phone = phone;
+  document.getElementById('userBadge').textContent = `💼 ${name}`;
+  showToast('success', '✅ Saved', 'Profile updated');
+  renderClientProfile();
+}
+
+async function changeClientPassword() {
+  const newPass = document.getElementById('client-new-pass').value;
+  const confirm = document.getElementById('client-confirm-pass').value;
+  if (!newPass || !confirm) { showToast('warning', '⚠️', 'Both fields required'); return; }
+  if (newPass.length < 6) { showToast('warning', '⚠️', 'Min 6 characters'); return; }
+  if (newPass !== confirm) { showToast('error', '❌ Mismatch', 'Passwords do not match'); return; }
+  const { error } = await supabase.auth.updateUser({ password: newPass });
+  if (error) { showToast('error', '❌ Error', error.message); return; }
+  ['client-new-pass','client-confirm-pass'].forEach(id => document.getElementById(id).value = '');
+  showToast('success', '✅ Password Updated', 'Your password has been changed');
+}
+
+// =====================================================
+// REMINDER SYSTEM
+// =====================================================
+const reminderLog = {};
+
+function startReminderSystem() {
+  setInterval(async () => {
+    const { data: inProgress } = await supabase.from('projects').select('*').eq('status', 'in-progress');
+    if (!inProgress) return;
+    const now = Date.now();
+    for (const p of inProgress) {
+      if (!reminderLog[p.id]) reminderLog[p.id] = { lastStaffReminder: 0, escalated: false };
+      const log = reminderLog[p.id];
+      const elapsed   = now - new Date(p.assigned_at || p.created_at).getTime();
+      const elapsedHrs = elapsed / 3600000;
+      const timeSince  = now - log.lastStaffReminder;
+
+      if (elapsedHrs >= 3 && timeSince >= 10800000) {
+        const { data: staff } = await supabase.from('profiles').select('*').eq('id', p.assigned_to).single();
+        if (staff) { emailStaffReminder(staff, p, Math.floor(elapsedHrs)); log.lastStaffReminder = now; showToast('warning', '📧 Staff Reminded', `${staff.full_name} reminded (${Math.floor(elapsedHrs)}h)`); }
+      }
+      if (elapsedHrs >= 6 && !log.escalated) {
+        const { data: staff } = await supabase.from('profiles').select('*').eq('id', p.assigned_to).single();
+        emailAdminEscalate(p, staff, Math.floor(elapsedHrs));
+        log.escalated = true;
+        showToast('error', '⚠️ Escalation Alert', `${p.type} overdue! (${Math.floor(elapsedHrs)}h)`);
+      }
+    }
+  }, 60000);
+}
+
+// =====================================================
+// SUPABASE HELPERS
+// =====================================================
+async function addNotification(userId, text, type) {
+  await supabase.from('notifications').insert({ user_id: userId, text, type });
+}
+
+async function logActivity(color, text) {
+  await supabase.from('activity_log').insert({ color, text });
+}
+
+// =====================================================
+// MODAL HELPERS
+// =====================================================
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
+  });
+});
+
+let _confirmDeleteCallback = null;
+function showConfirmDelete(msg, callback) {
+  document.getElementById('confirmDeleteMsg').textContent = msg;
+  _confirmDeleteCallback = callback;
+  document.getElementById('confirmDeleteBtn').onclick = callback;
+  openModal('confirmDeleteModal');
+}
+
+// =====================================================
+// TOAST
+// =====================================================
+function showToast(type, title, msg) {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  const icons = { success: '✅', error: '❌', warning: '⚠️', info: '💡' };
+  toast.innerHTML = `<div class="toast-icon">${icons[type]||'🔔'}</div><div><div class="toast-title">${title}</div><div class="toast-msg">${msg}</div></div>`;
+  container.appendChild(toast);
+  setTimeout(() => { toast.style.opacity='0'; toast.style.transform='translateX(100%)'; toast.style.transition='all 0.3s'; setTimeout(() => toast.remove(), 300); }, 4000);
+}
+
+// =====================================================
+// HELPERS
+// =====================================================
+function typeIcon(type) {
+  const icons = { 'Reel':'🎬','Carousel':'🎠','Social Media Design':'📱','Reel Cover':'🖼️','Other':'➕' };
+  return icons[type] || '📁';
+}
+
+function statusLabel(status) {
+  const labels = { 'new':'New','assigned':'Assigned','in-progress':'In Progress','submitted':'Under Review','delivered':'Delivered','pending':'Pending','revision':'Revision' };
+  return labels[status] || status;
+}
+
+function formatDate(ts) {
+  if (!ts) return '—';
+  return new Date(ts).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function formatTimeAgo(ts) {
+  if (!ts) return '';
+  const diff = Date.now() - new Date(ts).getTime();
+  if (diff < 60000) return 'Just now';
+  if (diff < 3600000) return `${Math.floor(diff/60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`;
+  return `${Math.floor(diff/86400000)}d ago`;
+}
+</script>
+</body>
+</html>
