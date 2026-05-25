@@ -1648,7 +1648,7 @@ function saveState() {
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
   } catch(e) { console.warn('localStorage save failed:', e); }
-  syncToSupabase(); // fire-and-forget
+  syncToSupabase().catch(e => console.warn('[Supabase] Sync failed:', e));
 }
 
 // ── Delete a user from Supabase by id ─────────────────────────
